@@ -210,3 +210,4 @@ See [`idea.md`](idea.md) for the full prioritized list. Highlights still to ship
 ## License
 
 MIT — feel free to use as a portfolio reference.
+
