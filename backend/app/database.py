@@ -8,9 +8,21 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "app.db"
+from app.config import get_settings
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _resolve_db_path() -> Path:
+    settings = get_settings()
+    if settings.data_dir:
+        base = Path(settings.data_dir)
+        base.mkdir(parents=True, exist_ok=True)
+        return base / "app.db"
+    return BASE_DIR / "app.db"
+
+
+DB_PATH = _resolve_db_path()
 DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
 engine = create_async_engine(

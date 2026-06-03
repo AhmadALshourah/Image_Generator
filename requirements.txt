@@ -1,0 +1,163 @@
+# =============================================================================
+# AI Image Generator — Complete Dependency Manifest
+# =============================================================================
+#
+# This file is the SINGLE source of truth for everything you need to run the
+# project. It works two ways:
+#
+#   1. As a normal pip file:   pip install -r requirements.txt
+#      (installs every Python package the backend needs, prod + dev)
+#
+#   2. As a setup checklist (the comments below) for the non-Python pieces:
+#      Node + npm packages, system tools, environment variables.
+#
+# -----------------------------------------------------------------------------
+# QUICK START (Docker — recommended)
+# -----------------------------------------------------------------------------
+#
+#   1. Install Docker Desktop (Windows / macOS) or Docker Engine v20+ (Linux)
+#      https://www.docker.com/products/docker-desktop/
+#
+#   2. Copy `backend/.env.example` to `.env` at the repo root, then set:
+#        OPENAI_API_KEY=sk-your-real-key-here
+#
+#   3. From the repo root:
+#        docker compose up --build
+#
+#   4. Open http://localhost:8080
+#
+#   Everything else (Python, Node, npm, packages, the DB, the image folder)
+#   lives INSIDE the containers — you don't have to install any of it locally.
+#
+# -----------------------------------------------------------------------------
+# QUICK START (native dev — for editing code)
+# -----------------------------------------------------------------------------
+#
+# System prerequisites (install once, globally):
+#
+#   * Python 3.12+         https://www.python.org/downloads/
+#   * Node.js 20+          https://nodejs.org/  (ships with npm)
+#   * Git                  https://git-scm.com/
+#   * (optional) pre-commit  pip install pre-commit
+#
+# -- Backend ------------------------------------------------------------------
+#
+#   cd backend
+#   python -m venv .venv
+#   .venv\Scripts\activate            # Windows PowerShell
+#   # source .venv/bin/activate       # macOS / Linux
+#   pip install -r ../requirements.txt
+#   copy .env.example .env            # Windows  (or `cp` on macOS/Linux)
+#   # Edit .env and set OPENAI_API_KEY
+#   uvicorn app.main:app --reload --port 8000
+#
+# -- Frontend (in a second terminal) ------------------------------------------
+#
+#   cd frontend
+#   npm install
+#   npm run dev
+#
+# Then open http://localhost:5173
+#
+# The frontend Vite dev server proxies /api/* to http://localhost:8000 — no
+# CORS configuration is needed for development.
+#
+# -----------------------------------------------------------------------------
+# FRONTEND PACKAGES (managed by npm — see frontend/package.json)
+# -----------------------------------------------------------------------------
+#
+# The frontend uses these top-level packages (do NOT pip install them):
+#
+#   Runtime:
+#     react, react-dom                   UI library
+#     react-router-dom                   client-side routing
+#     @tanstack/react-query              data fetching + cache
+#     @tanstack/react-query-devtools     dev-time inspector
+#     axios                              HTTP client
+#     @sentry/react                      error tracking (optional)
+#
+#   Build & dev:
+#     vite, @vitejs/plugin-react         dev server + bundler
+#     vite-plugin-pwa, workbox-window    PWA / service worker
+#     typescript                         strict type checking
+#     tailwindcss, postcss, autoprefixer styling
+#     openapi-typescript                 generate types from /openapi.json
+#
+#   Tests:
+#     vitest, @vitest/coverage-v8        test runner + coverage
+#     @testing-library/react             component tests
+#     @testing-library/user-event        realistic user interactions
+#     @testing-library/jest-dom          extra matchers
+#     jsdom                              DOM polyfill for vitest
+#
+# Install them with:  cd frontend && npm install
+#
+# -----------------------------------------------------------------------------
+# OPTIONAL DEVELOPER TOOLING
+# -----------------------------------------------------------------------------
+#
+#   pre-commit       Runs ruff + prettier + safety hooks on every git commit.
+#                    Install:  pip install pre-commit
+#                    Activate: pre-commit install
+#
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# Backend runtime dependencies
+# -----------------------------------------------------------------------------
+
+# --- Web framework + ASGI server ---------------------------------------------
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+
+# --- OpenAI SDK + env loading -----------------------------------------------
+openai>=1.51.0
+python-dotenv>=1.0.0
+
+# --- Validation / settings ---------------------------------------------------
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+
+# --- HTTP client (used for image downloads + Sentry) ------------------------
+httpx>=0.27.0
+
+# --- Async SQLAlchemy + SQLite driver ---------------------------------------
+sqlalchemy[asyncio]>=2.0.30
+aiosqlite>=0.20.0
+
+# --- Async file IO -----------------------------------------------------------
+aiofiles>=24.1.0
+
+# --- Image processing (WebP thumbnails + PNG metadata embedding) ------------
+pillow>=10.4.0
+
+# --- Structured logging with request IDs ------------------------------------
+structlog>=24.4.0
+
+# --- Server-Sent Events streaming endpoint ----------------------------------
+sse-starlette>=2.1.3
+
+# --- JWT auth (owner-mode login) --------------------------------------------
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# --- Embeddings / similar-prompts vector math -------------------------------
+numpy>=1.26.0
+
+# --- Error tracking (env-gated — only active if SENTRY_DSN is set) ----------
+sentry-sdk[fastapi]>=2.17.0
+
+# --- Pluggable cloud storage (lazy-imported only when STORAGE_BACKEND=s3) ---
+boto3>=1.35.0
+
+
+# -----------------------------------------------------------------------------
+# Backend test / dev dependencies
+# -----------------------------------------------------------------------------
+# (You can omit these in a pure production install — they're only needed for
+# `pytest` and the type/lint checks. Kept here so a single `pip install -r
+# requirements.txt` gives you a fully working environment.)
+
+pytest>=8.3.0
+pytest-asyncio>=0.24.0

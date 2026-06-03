@@ -9,3 +9,14 @@ sqlalchemy[asyncio]>=2.0.30
 aiosqlite>=0.20.0
 aiofiles>=24.1.0
 pillow>=10.4.0
+structlog>=24.4.0
+sse-starlette>=2.1.3
+# auth (#14)
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+# embeddings vector packing (#17)
+numpy>=1.26.0
+# observability (#27)
+sentry-sdk[fastapi]>=2.17.0
+# cloud storage (#15) — only imported when STORAGE_BACKEND=s3
+boto3>=1.35.0

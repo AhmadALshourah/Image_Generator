@@ -1,0 +1,50 @@
+# Run locally with:   pre-commit install   (once)
+# Bypass with:       git commit --no-verify  (don't make a habit of it)
+# CI runs the same checks via .github/workflows/ci.yml.
+
+default_install_hook_types: [pre-commit]
+default_stages: [pre-commit]
+fail_fast: false
+
+repos:
+  # ---- generic safety net -------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+
+  # ---- Python (backend) ---------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        name: ruff (lint + autofix)
+        args: ["--fix", "--exit-non-zero-on-fix"]
+        files: ^backend/.*\.py$
+      - id: ruff-format
+        name: ruff (format)
+        files: ^backend/.*\.py$
+
+  # ---- TypeScript / JSON / Markdown / CSS (frontend + root) ---------
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        name: prettier (format)
+        files: \.(ts|tsx|js|jsx|json|css|md|html|yml|yaml)$
+        exclude: |
+          (?x)^(
+              frontend/dist/.*|
+              frontend/node_modules/.*|
+              backend/\.venv/.*|
+              .*\.lock\.json
+          )$

@@ -1,20 +1,28 @@
 """Image generation, listing, retrieval, deletion.
 
-The `POST /api/generate` pipeline:
-  1. Moderate the prompt (OpenAI Moderation API).
-  2. Detect Arabic → translate to English via GPT-4o-mini.
-  3. Compute the cache hash from the effective (English) prompt + options.
-  4. If an identical record already exists (and `force=false`), return it.
-  5. Otherwise call gpt-image-1, persist the image + WebP thumbnail, store the row.
+Two generate endpoints, sharing one pipeline:
+
+  * `POST /api/generate`         — single response, returns the saved record.
+  * `POST /api/generate/stream`  — Server-Sent Events: stage updates, partial
+                                    renders (3×), and a terminal `complete`
+                                    event with the saved ImageRecord.
+
+All DB access goes through `ImageRepository` (DI) — the routing layer is
+thin and SQLAlchemy-free.
 """
+from __future__ import annotations
+
+import json
 import logging
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sse_starlette.sse import EventSourceResponse
 
-from app.database import get_db
 from app.models import Image
+from app.repositories import ImageRepository, get_image_repository
 from app.schemas import (
     DeleteResponse,
     GenerateRequest,
@@ -23,82 +31,94 @@ from app.schemas import (
     ImageRecord,
 )
 from app.services import (
+    auth_service,
     cache_service,
+    cost_service,
+    embedding_service,
     gpt_image_service,
     moderation_service,
     prompt_service,
     storage_service,
 )
+from app.services.gpt_image_service import StreamCompleted, StreamPartial
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["images"])
 
 
-@router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
-    return HealthResponse()
+# ---------------------------------------------------------------------------
+# Shared pipeline helpers
+# ---------------------------------------------------------------------------
+
+@dataclass
+class _ResolvedPrompt:
+    effective_prompt: str
+    was_translated: bool
 
 
-@router.post("/generate", response_model=ImageRecord, status_code=status.HTTP_201_CREATED)
-async def generate(request: GenerateRequest, db: AsyncSession = Depends(get_db)) -> ImageRecord:
-    # 1. Moderation pre-flight (free, fast, blocks TOS-violating prompts).
+async def _moderate_and_translate(request: GenerateRequest) -> _ResolvedPrompt:
     await moderation_service.assert_prompt_allowed(request.prompt)
 
-    # 2. Detect Arabic and translate to English silently.
-    was_translated = False
-    effective_prompt = request.prompt
-    if prompt_service.looks_arabic(request.prompt):
-        translated = await prompt_service.translate_to_english(request.prompt)
-        if translated and translated.strip() != request.prompt.strip():
-            effective_prompt = translated
-            was_translated = True
+    if not prompt_service.looks_arabic(request.prompt):
+        return _ResolvedPrompt(effective_prompt=request.prompt, was_translated=False)
 
-    # 3. Cache lookup.
-    prompt_hash = cache_service.compute_prompt_hash(
-        effective_prompt=effective_prompt,
-        size=request.size,
-        quality=request.quality,
-        background=request.background,
-        output_format=request.output_format,
+    translated = await prompt_service.translate_to_english(request.prompt)
+    if translated and translated.strip() != request.prompt.strip():
+        return _ResolvedPrompt(effective_prompt=translated, was_translated=True)
+    return _ResolvedPrompt(effective_prompt=request.prompt, was_translated=False)
+
+
+async def _persist(
+    *,
+    request: GenerateRequest,
+    resolved: _ResolvedPrompt,
+    image_bytes: bytes,
+    output_format: str,
+    prompt_hash: str,
+    repo: ImageRepository,
+) -> Image:
+    image_uuid, filename, thumbnail_filename, file_size = await storage_service.save_image_with_thumbnail(
+        image_bytes=image_bytes,
+        output_format=output_format,
+        metadata={
+            "prompt": request.prompt,
+            "effective_prompt": resolved.effective_prompt,
+            "was_translated": str(resolved.was_translated).lower(),
+            "size": request.size,
+            "quality": request.quality,
+            "background": request.background,
+            "model": "gpt-image-1",
+        },
     )
 
-    if not request.force:
-        cached = await db.scalar(
-            select(Image).where(Image.prompt_hash == prompt_hash).limit(1)
-        )
-        if cached is not None:
-            return ImageRecord.from_orm_with_urls(cached, cached=True)
+    # Embedding for "similar prompts" (#17) — best-effort, never blocks the response.
+    vector = await embedding_service.embed_text(resolved.effective_prompt)
+    embedding_blob = embedding_service.pack_vector(vector) if vector else None
 
-    # 4. Generate with gpt-image-1.
-    result = await gpt_image_service.generate_image(request, effective_prompt=effective_prompt)
-
-    # 5. Persist file + WebP thumbnail.
-    image_uuid, filename, thumbnail_filename, file_size = (
-        await storage_service.save_image_with_thumbnail(result.image_bytes, result.output_format)
-    )
+    cost = cost_service.estimate_image_cost_usd(quality=request.quality, size=request.size)
 
     image = Image(
         uuid=image_uuid,
         prompt=request.prompt,
-        effective_prompt=effective_prompt,
-        was_translated=was_translated,
+        effective_prompt=resolved.effective_prompt,
+        was_translated=resolved.was_translated,
         size=request.size,
         quality=request.quality,
         background=request.background,
-        output_format=result.output_format,
+        output_format=output_format,
         prompt_hash=prompt_hash,
         filename=filename,
         thumbnail_filename=thumbnail_filename,
         file_size=file_size,
+        cost_usd=cost,
+        embedding=embedding_blob,
     )
 
     try:
-        db.add(image)
-        await db.commit()
-        await db.refresh(image)
+        return await repo.add(image)
     except Exception:
-        await db.rollback()
+        await repo.rollback()
         await storage_service.delete_files(filename, thumbnail_filename)
         logger.exception("Failed to persist image record")
         raise HTTPException(
@@ -106,48 +126,206 @@ async def generate(request: GenerateRequest, db: AsyncSession = Depends(get_db))
             detail="Failed to save image record.",
         )
 
+
+# ---------------------------------------------------------------------------
+# Routes
+# ---------------------------------------------------------------------------
+
+@router.get("/health", response_model=HealthResponse)
+async def health() -> HealthResponse:
+    return HealthResponse()
+
+
+@router.post("/generate", response_model=ImageRecord, status_code=status.HTTP_201_CREATED)
+async def generate(
+    request: GenerateRequest,
+    repo: ImageRepository = Depends(get_image_repository),
+    _: str = Depends(auth_service.require_owner),
+) -> ImageRecord:
+    resolved = await _moderate_and_translate(request)
+
+    prompt_hash = cache_service.compute_prompt_hash(
+        effective_prompt=resolved.effective_prompt,
+        size=request.size,
+        quality=request.quality,
+        background=request.background,
+        output_format=request.output_format,
+    )
+
+    if not request.force:
+        cached = await repo.find_by_prompt_hash(prompt_hash)
+        if cached is not None:
+            return ImageRecord.from_orm_with_urls(cached, cached=True)
+
+    result = await gpt_image_service.generate_image(
+        request, effective_prompt=resolved.effective_prompt
+    )
+
+    image = await _persist(
+        request=request,
+        resolved=resolved,
+        image_bytes=result.image_bytes,
+        output_format=result.output_format,
+        prompt_hash=prompt_hash,
+        repo=repo,
+    )
     return ImageRecord.from_orm_with_urls(image, cached=False)
+
+
+@router.post("/generate/stream")
+async def generate_stream(
+    request: GenerateRequest,
+    repo: ImageRepository = Depends(get_image_repository),
+    _: str = Depends(auth_service.require_owner),
+):
+    async def event_generator() -> AsyncIterator[dict[str, Any]]:
+        try:
+            yield {"event": "stage", "data": json.dumps({"stage": "moderating"})}
+            try:
+                await moderation_service.assert_prompt_allowed(request.prompt)
+            except HTTPException as exc:
+                yield {"event": "error", "data": json.dumps({"detail": str(exc.detail)})}
+                return
+
+            if prompt_service.looks_arabic(request.prompt):
+                yield {"event": "stage", "data": json.dumps({"stage": "translating"})}
+                translated = await prompt_service.translate_to_english(request.prompt)
+                if translated and translated.strip() != request.prompt.strip():
+                    resolved = _ResolvedPrompt(effective_prompt=translated, was_translated=True)
+                    yield {
+                        "event": "stage",
+                        "data": json.dumps(
+                            {"stage": "translated", "effective_prompt": translated}
+                        ),
+                    }
+                else:
+                    resolved = _ResolvedPrompt(
+                        effective_prompt=request.prompt, was_translated=False
+                    )
+            else:
+                resolved = _ResolvedPrompt(effective_prompt=request.prompt, was_translated=False)
+
+            prompt_hash = cache_service.compute_prompt_hash(
+                effective_prompt=resolved.effective_prompt,
+                size=request.size,
+                quality=request.quality,
+                background=request.background,
+                output_format=request.output_format,
+            )
+
+            if not request.force:
+                yield {"event": "stage", "data": json.dumps({"stage": "cache_check"})}
+                cached = await repo.find_by_prompt_hash(prompt_hash)
+                if cached is not None:
+                    record = ImageRecord.from_orm_with_urls(cached, cached=True)
+                    yield {"event": "complete", "data": record.model_dump_json()}
+                    return
+
+            yield {"event": "stage", "data": json.dumps({"stage": "generating"})}
+
+            final_bytes: bytes | None = None
+            final_format = request.output_format
+            try:
+                async for piece in gpt_image_service.stream_generate_image(
+                    request, effective_prompt=resolved.effective_prompt
+                ):
+                    if isinstance(piece, StreamPartial):
+                        yield {
+                            "event": "partial",
+                            "data": json.dumps(
+                                {"index": piece.index, "b64_json": piece.b64_json}
+                            ),
+                        }
+                    elif isinstance(piece, StreamCompleted):
+                        final_bytes = piece.image_bytes
+                        final_format = piece.output_format
+            except HTTPException as exc:
+                yield {"event": "error", "data": json.dumps({"detail": str(exc.detail)})}
+                return
+
+            if final_bytes is None:
+                yield {
+                    "event": "error",
+                    "data": json.dumps({"detail": "No final image returned by provider"}),
+                }
+                return
+
+            yield {"event": "stage", "data": json.dumps({"stage": "saving"})}
+            try:
+                image = await _persist(
+                    request=request,
+                    resolved=resolved,
+                    image_bytes=final_bytes,
+                    output_format=final_format,
+                    prompt_hash=prompt_hash,
+                    repo=repo,
+                )
+            except HTTPException as exc:
+                yield {"event": "error", "data": json.dumps({"detail": str(exc.detail)})}
+                return
+
+            record = ImageRecord.from_orm_with_urls(image, cached=False)
+            yield {"event": "complete", "data": record.model_dump_json()}
+
+        except Exception as exc:
+            logger.exception("Unhandled error during streaming generation")
+            yield {"event": "error", "data": json.dumps({"detail": f"Unexpected: {exc}"})}
+
+    return EventSourceResponse(event_generator())
 
 
 @router.get("/images", response_model=ImageListResponse)
 async def list_images(
     limit: int = Query(default=12, ge=1, le=60),
     offset: int = Query(default=0, ge=0),
-    db: AsyncSession = Depends(get_db),
+    q: str | None = Query(default=None, max_length=200),
+    size: str | None = Query(default=None),
+    quality: str | None = Query(default=None),
+    background: str | None = Query(default=None),
+    tag: str | None = Query(default=None, max_length=40),
+    repo: ImageRepository = Depends(get_image_repository),
 ) -> ImageListResponse:
-    total = await db.scalar(select(func.count()).select_from(Image)) or 0
-
-    result = await db.scalars(
-        select(Image).order_by(desc(Image.created_at)).limit(limit).offset(offset)
+    images, total = await repo.list_filtered(
+        limit=limit,
+        offset=offset,
+        q=q,
+        size=size,
+        quality=quality,
+        background=background,
+        tag=tag,
     )
-    images = result.all()
-
     return ImageListResponse(
         items=[ImageRecord.from_orm_with_urls(img) for img in images],
-        total=int(total),
+        total=total,
         limit=limit,
         offset=offset,
     )
 
 
 @router.get("/images/{image_id}", response_model=ImageRecord)
-async def get_image(image_id: int, db: AsyncSession = Depends(get_db)) -> ImageRecord:
-    image = await db.get(Image, image_id)
+async def get_image(
+    image_id: int,
+    repo: ImageRepository = Depends(get_image_repository),
+) -> ImageRecord:
+    image = await repo.get_by_id(image_id)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
     return ImageRecord.from_orm_with_urls(image)
 
 
 @router.delete("/images/{image_id}", response_model=DeleteResponse)
-async def delete_image(image_id: int, db: AsyncSession = Depends(get_db)) -> DeleteResponse:
-    image = await db.get(Image, image_id)
+async def delete_image(
+    image_id: int,
+    repo: ImageRepository = Depends(get_image_repository),
+    _: str = Depends(auth_service.require_owner),
+) -> DeleteResponse:
+    image = await repo.get_by_id(image_id)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
 
     filename = image.filename
     thumbnail_filename = image.thumbnail_filename
-    await db.delete(image)
-    await db.commit()
+    await repo.delete(image)
     await storage_service.delete_files(filename, thumbnail_filename)
 
     return DeleteResponse(deleted=True, id=image_id)

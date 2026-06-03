@@ -10,18 +10,24 @@ ImageBackground = Literal["transparent", "opaque", "auto"]
 ImageOutputFormat = Literal["png", "jpeg", "webp"]
 
 
+# ---- Image generation -----------------------------------------------------
+
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., min_length=3, max_length=4000)
     size: ImageSize = "1024x1024"
     quality: ImageQuality = "auto"
     background: ImageBackground = "auto"
     output_format: ImageOutputFormat = "png"
-    force: bool = False  # bypass the prompt cache
+    force: bool = False
+
+
+class TagSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
 
 
 class ImageRecord(BaseModel):
-    """A persisted image record returned to the client."""
-
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -36,7 +42,9 @@ class ImageRecord(BaseModel):
     filename: str
     thumbnail_filename: str
     file_size: int
+    cost_usd: float
     created_at: datetime
+    tags: list[TagSummary] = Field(default_factory=list)
     image_url: str = ""
     thumbnail_url: str = ""
     cached: bool = False
@@ -66,6 +74,8 @@ class ImageListResponse(BaseModel):
     offset: int
 
 
+# ---- Prompt enhancement ---------------------------------------------------
+
 class EnhancePromptRequest(BaseModel):
     prompt: str = Field(..., min_length=2, max_length=2000)
 
@@ -75,6 +85,76 @@ class EnhancePromptResponse(BaseModel):
     enhanced: str
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
+# ---- Similar prompts (#17) ------------------------------------------------
+
+class SimilarPromptResult(BaseModel):
+    id: int
+    prompt: str
+    effective_prompt: str
+    score: float
+    thumbnail_url: str
+
+
+class SimilarPromptsResponse(BaseModel):
+    query: str
+    items: list[SimilarPromptResult]
+
+
+# ---- Tags (#20) -----------------------------------------------------------
+
+class TagAssignment(BaseModel):
+    tags: list[str] = Field(..., max_length=20)
+
+
+class TagWithCount(BaseModel):
+    id: int
+    name: str
+    image_count: int
+
+
+class TagListResponse(BaseModel):
+    items: list[TagWithCount]
+
+
+# ---- Stats / Cost dashboard (#18) -----------------------------------------
+
+class CostByDay(BaseModel):
+    day: str  # ISO date
+    images: int
+    cost_usd: float
+
+
+class StatsResponse(BaseModel):
+    total_images: int
+    total_cost_usd: float
+    cached_count: int
+    translated_count: int
+    by_quality: dict[str, int]
+    by_size: dict[str, int]
+    by_day: list[CostByDay]
+
+
+# ---- Auth (#14) -----------------------------------------------------------
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    expires_in: int  # seconds
+
+
+class AuthStatusResponse(BaseModel):
+    auth_enabled: bool
+    is_authenticated: bool
+    username: str | None = None
+
+
+# ---- Misc -----------------------------------------------------------------
 
 class DeleteResponse(BaseModel):
     deleted: bool

@@ -23,7 +23,7 @@
 
 ---
 
-### 2. Replace manual fetch/loading/error state with **TanStack Query** (React Query)
+### 2. ✅ **صح** — Replace manual fetch/loading/error state with **TanStack Query** (React Query)
 **Why:** Right now `HomePage` and `GalleryPage` each reinvent `loading`/`error`/`result` state, refetch logic, optimistic delete, and stale data handling. TanStack Query handles all of it — plus caching, deduplication, refetch-on-focus, retry-with-backoff — in **5 lines per call**. This is what every modern React codebase looks like.
 
 **How:**
@@ -70,7 +70,7 @@ const deleteMutation = useMutation({
 
 ---
 
-### 5. Server-Sent Events (SSE) for generation progress
+### 5. ✅ **صح** — Server-Sent Events (SSE) for generation progress
 **Why:** The user stares at a spinner for 25 seconds with no feedback. Stream status updates: `"Moderating prompt..."` → `"Calling GPT Image 1..."` → `"Downloading..."` → `"Generating thumbnail..."` → `"Done"`. Feels 3x faster even though it isn't.
 
 **How:**
@@ -111,7 +111,7 @@ Call this at the very top of `generate_image`. Return clear error categories to 
 
 ---
 
-### 8. Gallery **search + filter**
+### 8. ✅ **صح** — Gallery **search + filter**
 **Why:** Once you have 30+ images, the gallery is unusable without search. This is the single most-requested feature in image-gen apps.
 
 **How:**
@@ -125,7 +125,7 @@ Call this at the very top of `generate_image`. Return clear error categories to 
 
 ## Tier A — High-Impact Polish
 
-### 9. Image **variations** + "regenerate with new seed"
+### 9. ✅ **صح** — Image **variations** + "regenerate with new seed"
 **Why:** The most-requested GPT Image 1 workflow. User loves an image but wants alternatives.
 
 **How:** A "Generate similar" button on every image card that sends the same prompt+options back to `/api/generate`. (GPT Image 1 has no `seed` param — variability comes from the underlying randomness.)
@@ -134,7 +134,7 @@ Call this at the very top of `generate_image`. Return clear error categories to 
 
 ---
 
-### 10. Embed prompt metadata **inside the PNG file** (tEXt chunks)
+### 10. ✅ **صح** — Embed prompt metadata **inside the PNG file** (tEXt chunks)
 **Why:** Make the image **self-describing**. Anyone who downloads the PNG can extract the prompt and full generation parameters via `exiftool` or Pillow. This is what Automatic1111 / ComfyUI / Midjourney do — and it's a tiny detail that screams "this developer thinks about the long-term."
 
 **How:**
@@ -153,7 +153,7 @@ Image.open(temp_path).save(final_path, "PNG", pnginfo=info)
 
 ---
 
-### 11. **Docker + docker-compose** for one-command deploy
+### 11. ✅ **صح** — **Docker + docker-compose** for one-command deploy
 **Why:** Recruiters love `docker compose up`. Production-readiness signal. Reproducible across machines.
 
 **Layout:**
@@ -171,7 +171,7 @@ Bonus: `Caddy` instead of Nginx for auto-HTTPS in prod.
 
 ---
 
-### 12. Migrate frontend to **TypeScript** + auto-generated API client
+### 12. ✅ **صح** — Migrate frontend to **TypeScript** + auto-generated API client
 **Why:** Type safety end-to-end. A single source of truth for the DTOs.
 
 **How:**
@@ -186,7 +186,7 @@ Bonus: `Caddy` instead of Nginx for auto-HTTPS in prod.
 
 ---
 
-### 13. Tests — `pytest` (backend) + `vitest` + `@testing-library/react` (frontend)
+### 13. ✅ **صح** — Tests — `pytest` (backend) + `vitest` + `@testing-library/react` (frontend)
 **Why:** Zero tests right now. Even a thin test suite (one test per endpoint, one per page) is a CV-grade signal.
 
 **Minimum viable:**
@@ -197,7 +197,7 @@ Bonus: `Caddy` instead of Nginx for auto-HTTPS in prod.
 
 ---
 
-### 14. **JWT auth** + per-user galleries
+### 14. ✅ **صح** — **JWT auth** + per-user galleries
 **Why:** Without this you can't safely deploy publicly. A single hard-coded admin user is fine for v1.
 
 **Stack:**
@@ -209,7 +209,7 @@ Bonus: `Caddy` instead of Nginx for auto-HTTPS in prod.
 
 ---
 
-### 15. Pluggable **cloud storage** (S3 / R2 / Cloudinary)
+### 15. ✅ **صح** — Pluggable **cloud storage** (S3 / R2 / Cloudinary)
 **Why:** Local disk doesn't survive a redeploy and doesn't scale. Abstract storage behind an interface — local for dev, S3-compatible for prod.
 
 **How:**
@@ -227,7 +227,7 @@ Pick via `STORAGE_BACKEND=local|s3` env var.
 
 ---
 
-### 16. **Structured logging** with request IDs (correlation IDs)
+### 16. ✅ **صح** — **Structured logging** with request IDs (correlation IDs)
 **Why:** Every production system has this. Lets you trace a single request across services.
 
 **How:**
@@ -241,7 +241,7 @@ Pick via `STORAGE_BACKEND=local|s3` env var.
 
 ## Tier B — Differentiators That Make the Project Stand Out
 
-### 17. **Embedding-based "similar prompts" autocomplete**
+### 17. ✅ **صح** — **Embedding-based "similar prompts" autocomplete**
 **Why:** As you type, show the 3 most similar past prompts as inspiration. Genuinely useful and demonstrates understanding of vector search — a hot skill in 2026.
 
 **How:**
@@ -253,7 +253,7 @@ Pick via `STORAGE_BACKEND=local|s3` env var.
 
 ---
 
-### 18. **Cost dashboard** — track API spend
+### 18. ✅ **صح** — **Cost dashboard** — track API spend
 **Why:** Any AI app should expose this. Shows responsibility and product thinking.
 
 **How:**
@@ -265,7 +265,7 @@ Pick via `STORAGE_BACKEND=local|s3` env var.
 
 ---
 
-### 19. **PWA** — installable, offline gallery
+### 19. ✅ **صح** — **PWA** — installable, offline gallery
 **Why:** Modern, mobile-friendly, scores 100 on Lighthouse. Service worker caches the gallery so the app works offline (viewing only).
 
 **How:**
@@ -277,7 +277,7 @@ Pick via `STORAGE_BACKEND=local|s3` env var.
 
 ---
 
-### 20. **Tags + Collections** (many-to-many)
+### 20. ✅ **صح** — **Tags + Collections** (many-to-many)
 **Why:** Real organization for power users.
 
 **Schema:**
@@ -294,7 +294,7 @@ UI: tag chips in the modal, "Collections" page with drag-to-reorder.
 
 ---
 
-### 21. **Voice input** via Web Speech API
+### 21. ✅ **صح** — **Voice input** via Web Speech API
 **Why:** A delightful detail that takes 30 minutes to add.
 
 **How:** A microphone button next to the prompt textarea. Browser's `SpeechRecognition` API → appends transcribed text into the textarea. Supports Arabic out of the box (`lang = 'ar-SA'`).
@@ -303,7 +303,7 @@ UI: tag chips in the modal, "Collections" page with drag-to-reorder.
 
 ---
 
-### 22. **Style presets** (one-click prompt augmentation)
+### 22. ✅ **صح** — **Style presets** (one-click prompt augmentation)
 **Why:** Lowers the skill floor for non-prompt-engineers. Lets beginners get great results.
 
 **Presets:** *Photorealistic*, *Anime*, *Oil Painting*, *Watercolor*, *Pixel Art*, *Cinematic Portrait*, *Studio Ghibli*, *3D Render*.
@@ -316,19 +316,19 @@ UI: tag chips in the modal, "Collections" page with drag-to-reorder.
 
 ## Code-Quality Upgrades (mostly invisible, but recruiter gold)
 
-### 23. **Repository pattern** + dependency injection
+### 23. ✅ **صح** — **Repository pattern** + dependency injection
 Abstract `ImageRepository` behind a Protocol. Routes depend on the protocol, not on SQLAlchemy. Trivial to mock in tests, trivial to swap storage.
 
-### 24. **Pre-commit hooks**
+### 24. ✅ **صح** — **Pre-commit hooks**
 `ruff` + `black` for Python, `prettier` + `eslint` for JS/TS. `.pre-commit-config.yaml` runs them on every commit. Zero formatting debates.
 
-### 25. **React Error Boundary + Suspense + code-splitting**
+### 25. ✅ **صح** — **React Error Boundary + Suspense + code-splitting**
 Wrap the router in an `<ErrorBoundary>` with a friendly fallback page. `React.lazy()` for `GalleryPage` — keeps the home page bundle tiny.
 
-### 26. **GitHub Actions CI**
+### 26. ✅ **صح** — **GitHub Actions CI**
 On every push: lint → type-check → run tests → build frontend → build Docker images. Required for any serious portfolio repo.
 
-### 27. **Sentry** for error tracking
+### 27. ✅ **صح** — **Sentry** for error tracking
 Free tier is plenty. Wire `sentry-sdk[fastapi]` on backend, `@sentry/react` on frontend. Real exception reports from real users in 10 minutes of setup.
 
 ---
@@ -340,12 +340,12 @@ Free tier is plenty. Wire `sentry-sdk[fastapi]` on backend, `@sentry/react` on f
 3. ✅ **صح** — **Prompt cache** (#7) — immediate cost win. 2 hours.
 4. ✅ **صح** — **Arabic auto-translate** (#4) — your standout feature. 3 hours.
 5. ✅ **صح** — **Async backend** (#1) — foundational. 1 day.
-6. **TanStack Query** (#2) — foundational. 1 day.
-7. **Gallery search** (#8). 1 day.
-8. **PNG metadata embedding** (#10) + **Image variations** (#9). Half-day combined.
-9. **TypeScript + OpenAPI codegen** (#12). 1 day.
-10. **Docker + docker-compose** (#11) + **CI** (#26). 1 day.
-11. **Tests** (#13). Ongoing — write them alongside each new feature.
-12. **JWT auth** (#14) + **S3 storage** (#15) — only when you decide to deploy publicly.
+6. ✅ **صح** — **TanStack Query** (#2) — foundational. 1 day.
+7. ✅ **صح** — **Gallery search** (#8). 1 day.
+8. ✅ **صح** — **PNG metadata embedding** (#10) + **Image variations** (#9). Half-day combined.
+9. ✅ **صح** — **TypeScript + OpenAPI codegen** (#12). 1 day.
+10. ✅ **صح** — **Docker + docker-compose** (#11) + **CI** (#26). 1 day.
+11. ✅ **صح** — **Tests** (#13). Ongoing — write them alongside each new feature.
+12. ✅ **صح** — **JWT auth** (#14) + **S3 storage** (#15) — only when you decide to deploy publicly.
 
 **By the end of step 10, this is no longer a "GPT Image 1 demo." It's a production-grade AI imaging product. That's the version that gets you the job.**
