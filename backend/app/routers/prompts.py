@@ -13,6 +13,7 @@ import numpy as np
 from app.repositories import ImageRepository, get_image_repository
 from app.schemas import SimilarPromptResult, SimilarPromptsResponse
 from app.services import embedding_service
+from app.storage.factory import get_storage_backend
 
 router = APIRouter(prefix="/api/prompts", tags=["prompts"])
 
@@ -47,6 +48,7 @@ async def similar_prompts(
     scored.sort(key=lambda pair: pair[0], reverse=True)
     top = scored[:top_k]
 
+    storage = get_storage_backend()
     items = [
         SimilarPromptResult(
             id=img.id,
@@ -54,9 +56,9 @@ async def similar_prompts(
             effective_prompt=img.effective_prompt,
             score=round(score, 4),
             thumbnail_url=(
-                f"/api/images/files/{img.thumbnail_filename}"
+                storage.public_url(img.thumbnail_filename)
                 if img.thumbnail_filename
-                else f"/api/images/files/{img.filename}"
+                else storage.public_url(img.filename)
             ),
         )
         for score, img in top

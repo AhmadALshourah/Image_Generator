@@ -1,5 +1,6 @@
 import { useEnhancePrompt } from '../api/queries';
 import { useToast } from '../context/ToastContext';
+import { useLang } from '../context/LangContext';
 
 export interface EnhancePromptButtonProps {
   prompt: string;
@@ -7,28 +8,19 @@ export interface EnhancePromptButtonProps {
   disabled?: boolean;
 }
 
-export default function EnhancePromptButton({
-  prompt,
-  onEnhanced,
-  disabled,
-}: EnhancePromptButtonProps) {
+export default function EnhancePromptButton({ prompt, onEnhanced, disabled }: EnhancePromptButtonProps) {
+  const { t } = useLang();
   const toast = useToast();
   const enhance = useEnhancePrompt();
 
   const handleClick = () => {
     const trimmed = (prompt || '').trim();
-    if (trimmed.length < 2) {
-      toast.error('Type at least 2 characters first.');
-      return;
-    }
+    if (trimmed.length < 2) { toast.error(t('toastMin2')); return; }
     enhance.mutate(trimmed, {
-      onSuccess: (result) => {
-        onEnhanced?.(result.enhanced);
-        toast.success('Prompt enhanced with GPT-4o-mini');
-      },
+      onSuccess: (result) => { onEnhanced?.(result.enhanced); toast.success(t('toastEnhanced')); },
       onError: (err) => {
         const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
-        toast.error(typeof detail === 'string' ? detail : 'Enhancement failed.');
+        toast.error(typeof detail === 'string' ? detail : t('toastEnhFail'));
       },
     });
   };
@@ -40,26 +32,25 @@ export default function EnhancePromptButton({
       type="button"
       onClick={handleClick}
       disabled={disabled || isLoading}
-      title="Expand your prompt with GPT for better results"
-      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700 transition
-                 hover:border-violet-300 hover:bg-violet-100 active:scale-[0.97]
-                 disabled:cursor-not-allowed disabled:opacity-50
-                 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-300
-                 dark:hover:bg-violet-950/60"
+      title={t('enhanceAI')}
+      className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-semibold
+                 text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/15
+                 hover:bg-indigo-100 dark:hover:bg-indigo-500/25 transition-colors
+                 disabled:cursor-not-allowed disabled:opacity-50"
     >
       {isLoading ? (
-        <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
           <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
         </svg>
       ) : (
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-             className="h-3.5 w-3.5">
-          <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8" />
+          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+          className="h-4 w-4">
+          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
         </svg>
       )}
-      {isLoading ? 'Enhancing...' : 'Enhance with AI'}
+      <span className="hidden sm:inline">{isLoading ? t('enhancing') : t('enhanceAI')}</span>
     </button>
   );
 }

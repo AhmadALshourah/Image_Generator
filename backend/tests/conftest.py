@@ -19,11 +19,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 # IMPORTANT: set env vars before any app import so pydantic-settings is happy.
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy")
 os.environ.setdefault("CORS_ORIGINS", "http://localhost")
+# Disable rate limiting in tests so repeated generate calls don't get 429.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 from app.config import get_settings
 from app.database import Base, get_db
 from app.main import create_app
 from app.services import openai_client as openai_client_module
+from app.storage.factory import get_storage_backend
 
 
 def _make_tiny_png_b64() -> str:
@@ -159,6 +162,7 @@ async def client(
     monkeypatch.setattr("app.services.storage_service.IMAGES_DIR", images_dir)
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     get_settings.cache_clear()
+    get_storage_backend.cache_clear()
 
     app = create_app()
 

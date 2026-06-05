@@ -1,18 +1,19 @@
 import ErrorMessage from './ErrorMessage';
+import { useLang } from '../context/LangContext';
 import type { GenerationStage } from '../hooks/useStreamGenerate';
 
 interface StageDef {
   id: GenerationStage;
-  label: string;
-  hint?: string;
+  labelKey: string;
+  hintKey: string;
 }
 
 const STAGES: StageDef[] = [
-  { id: 'moderating', label: 'Moderating prompt', hint: 'Safety check (~80ms)' },
-  { id: 'translating', label: 'Translating to English', hint: 'GPT-4o-mini · only if Arabic' },
-  { id: 'cache_check', label: 'Checking cache', hint: 'Same prompt? Skip generation.' },
-  { id: 'generating', label: 'Generating image', hint: 'gpt-image-1 · streaming partials' },
-  { id: 'saving', label: 'Saving + thumbnail', hint: 'Pillow WebP in parallel' },
+  { id: 'moderating',  labelKey: 'stageModerate',   hintKey: 'stageModerateH' },
+  { id: 'translating', labelKey: 'stageTranslate',  hintKey: 'stageTranslateH' },
+  { id: 'cache_check', labelKey: 'stageCache',      hintKey: 'stageCacheH' },
+  { id: 'generating',  labelKey: 'stageGen',        hintKey: 'stageGenH' },
+  { id: 'saving',      labelKey: 'stageSave',       hintKey: 'stageSaveH' },
 ];
 
 function stageIndex(stage: GenerationStage): number {
@@ -29,161 +30,133 @@ export interface GenerationProgressProps {
 }
 
 export default function GenerationProgress({
-  stage,
-  partialImage,
-  partialIndex,
-  effectivePrompt,
-  errorMessage,
-  onStop,
+  stage, partialImage, partialIndex, effectivePrompt, errorMessage, onStop,
 }: GenerationProgressProps) {
+  const { t } = useLang();
   const currentIdx = stageIndex(stage);
   const isComplete = stage === 'complete' || stage === 'cached';
   const isError = Boolean(errorMessage);
   const isLive = !isComplete && !isError;
 
-  // Translation row only renders if it's either active or already happened.
   const showTranslating =
     stage === 'translating' || stage === 'translated' || effectivePrompt !== null;
 
   const visibleStages = STAGES.filter((s) => s.id !== 'translating' || showTranslating);
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Live preview area */}
-      <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-slate-100 dark:border-slate-800 dark:bg-slate-900">
-        <div className="aspect-square">
-          {partialImage ? (
-            <img
-              key={partialIndex}
-              src={`data:image/png;base64,${partialImage}`}
-              alt={`Partial render ${partialIndex + 1}`}
-              className="h-full w-full object-cover animate-fade-in"
-            />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-indigo-950/40 dark:to-violet-950/40">
-                <svg
-                  className={`h-6 w-6 text-indigo-500 ${isLive ? 'animate-spin' : ''}`}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.2" />
-                  <path
-                    d="M4 12a8 8 0 0 1 8-8"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Partial previews will appear here as gpt-image-1 refines the image.
-              </p>
+    <div className="space-y-5 anim-fadeIn">
+      {/* preview area */}
+      <div className="relative aspect-square w-full rounded-xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5 bg-slate-100 dark:bg-slate-950">
+        {partialImage ? (
+          <img
+            key={partialIndex}
+            src={`data:image/png;base64,${partialImage}`}
+            alt={`Partial render ${partialIndex + 1}`}
+            className="h-full w-full object-cover anim-reveal"
+          />
+        ) : (
+          <div className="shimmer absolute inset-0 bg-slate-200 dark:bg-slate-800 grid place-items-center">
+            <div className="relative" style={{ width: 48, height: 48 }}>
+              <div
+                className="absolute inset-0 rounded-full blur-md opacity-50"
+                style={{ backgroundImage: 'linear-gradient(135deg, var(--brand-1), var(--brand-2))' }}
+              />
+              <div
+                className="spin absolute inset-0 rounded-full"
+                style={{
+                  background: 'conic-gradient(from 0deg, transparent 70%, var(--brand-2))',
+                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 4px), #000 0)',
+                }}
+              />
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {partialImage && isLive && (
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/70 via-black/40 to-transparent px-4 py-3">
-            <div className="flex items-center gap-2 text-xs font-medium text-white">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-              </span>
-              Refining · pass {partialIndex + 1}/3
-            </div>
+          <div className="absolute bottom-3 start-3 anim-fadeIn flex items-center gap-2 rounded-full bg-slate-950/70 backdrop-blur-md px-3 py-1.5 text-xs font-medium text-white">
+            <span
+              className="h-2 w-2 rounded-full pulse-ring"
+              style={{ backgroundColor: '#34d399', '--ring-color': 'rgba(52,211,153,.5)' } as React.CSSProperties}
+            />
+            {t('refining')} {partialIndex + 1}/3
           </div>
         )}
       </div>
 
-      {/* Error banner (preserves the stage list so users see where it failed) */}
       {isError && errorMessage && <ErrorMessage message={errorMessage} />}
 
-      {/* Stage list */}
-      <ul className="space-y-2">
+      {/* stage list */}
+      <ul className="space-y-3.5">
         {visibleStages.map((s) => {
           const idx = stageIndex(s.id);
           const isStageDone =
             (currentIdx > idx && currentIdx !== -1) ||
-            // translating "completes" the moment we transition to translated/cache_check
             (s.id === 'translating' && stage !== 'moderating' && effectivePrompt !== null);
           const isStageActive = stage === s.id && !isError;
           const isStageFailed = stage === s.id && isError;
           const isStagePending = !isStageDone && !isStageActive && !isStageFailed;
 
           return (
-            <li key={s.id} className="flex items-center gap-3 text-sm">
-              <span
-                className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full transition ${
-                  isStageDone
-                    ? 'bg-emerald-500'
-                    : isStageActive
-                    ? 'bg-indigo-500 ring-4 ring-indigo-500/20'
-                    : isStageFailed
-                    ? 'bg-red-500'
-                    : 'bg-slate-200 dark:bg-slate-700'
-                }`}
-              >
+            <li
+              key={s.id}
+              className={`flex items-start gap-3 transition-opacity duration-300 ${isStagePending ? 'opacity-40' : 'opacity-100'}`}
+            >
+              <span className="mt-0.5 shrink-0">
                 {isStageDone ? (
-                  <svg
-                    className="h-3 w-3 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  <span className="grid place-items-center h-5 w-5 rounded-full bg-emerald-500 text-white anim-scaleIn">
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
                 ) : isStageActive ? (
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+                  <span className="grid place-items-center h-5 w-5 rounded-full">
+                    <span
+                      className="h-3 w-3 rounded-full pulse-ring"
+                      style={{ backgroundColor: 'var(--brand-1)', '--ring-color': 'rgba(99,102,241,.5)' } as React.CSSProperties}
+                    />
+                  </span>
                 ) : isStageFailed ? (
-                  <svg
-                    className="h-3 w-3 text-white"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
-                ) : null}
-              </span>
-              <div className={isStagePending ? 'opacity-40' : ''}>
-                <p className={`leading-tight ${isStageActive || isStageFailed ? 'font-semibold' : ''}`}>
-                  {s.label}
-                </p>
-                {s.hint && (
-                  <p className="text-[11px] text-slate-500 dark:text-slate-500">{s.hint}</p>
+                  <span className="grid place-items-center h-5 w-5 rounded-full bg-red-500 text-white">
+                    <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </span>
+                ) : (
+                  <span className="grid place-items-center h-5 w-5 rounded-full ring-1 ring-slate-300 dark:ring-slate-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  </span>
                 )}
-              </div>
+              </span>
+              <span className="min-w-0">
+                <span className={`block text-sm font-medium ${isStageActive ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-300'}`}>
+                  {t(s.labelKey)}
+                </span>
+                <span className="block text-xs text-slate-400 dark:text-slate-500 font-mono mt-0.5">
+                  {t(s.hintKey)}
+                </span>
+              </span>
             </li>
           );
         })}
       </ul>
 
-      {/* Translation reveal */}
       {effectivePrompt && (
-        <div className="rounded-lg bg-amber-50/50 p-3 text-xs dark:bg-amber-950/20">
-          <p className="font-medium text-amber-800 dark:text-amber-300">
-            ✨ Translated to English (sent to model)
+        <div className="anim-fadeUp rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/25 px-4 py-3">
+          <p className="text-xs font-semibold text-amber-600 dark:text-amber-300 mb-1">
+            ✦ {t('translatedTo')}
           </p>
-          <p className="mt-1 text-slate-700 dark:text-slate-300">{effectivePrompt}</p>
+          <p className="text-sm text-amber-700 dark:text-amber-200" dir="ltr">{effectivePrompt}</p>
         </div>
       )}
 
-      {/* Cancel button while in-flight */}
       {isLive && onStop && (
         <button
           type="button"
           onClick={onStop}
-          className="text-xs font-medium text-red-600 hover:underline dark:text-red-400"
+          className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
         >
-          Cancel generation
+          {t('cancelGen')}
         </button>
       )}
     </div>

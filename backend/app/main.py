@@ -4,9 +4,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import get_settings
 from app.database import init_db
+from app.limiter import limiter
 from app.logging_config import configure_logging
 from app.middleware.request_id import RequestIDMiddleware
 from app.routers import auth, images, prompt, prompts, stats, tags
@@ -40,6 +43,10 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Rate-limiter state — must be set before any route handler runs.
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
     # Request-ID before CORS so the header is on every response.
     app.add_middleware(RequestIDMiddleware)
     app.add_middleware(
@@ -48,7 +55,14 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["X-Request-ID"],
+        expose_headers=[
+            "X-Request-ID",
+            # Rate-limit headers so the browser/client can back off gracefully.
+            "X-RateLimit-Limit",
+            "X-RateLimit-Remaining",
+            "X-RateLimit-Reset",
+            "Retry-After",
+        ],
     )
 
     # Static mount only matters for STORAGE_BACKEND=local. For S3 the URLs

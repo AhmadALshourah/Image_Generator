@@ -43,6 +43,19 @@ class Settings(BaseSettings):
     embeddings_enabled: bool = True
     embedding_model: str = "text-embedding-3-small"
 
+    # ---- Rate limiting ---------------------------------------------------
+    # Per-IP limit on POST /api/generate and POST /api/generate/stream.
+    # Set RATE_LIMIT_ENABLED=false in tests / local dev to skip enforcement.
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = 10
+
+    # ---- Output moderation (#21) -----------------------------------------
+    # When true, generated image bytes are run through the Moderation API
+    # as a second pass after gpt-image-1 returns them. Opt-in because
+    # gpt-image-1's own `moderation="auto"` already filters most content
+    # and a second pass adds latency + cost.
+    output_moderation_enabled: bool = False
+
     # ---- Observability (#27) ---------------------------------------------
     sentry_dsn: str = ""
     sentry_environment: str = "local"

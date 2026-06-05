@@ -4,6 +4,8 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 import DownloadButton from './DownloadButton';
 import ShareButton from './ShareButton';
+import TagChip from './TagChip';
+import { useLang } from '../context/LangContext';
 import type { ImageRecord } from '../types/api';
 
 export interface ImageDisplayProps {
@@ -12,128 +14,149 @@ export interface ImageDisplayProps {
   error: string | null;
 }
 
-function EmptyState() {
+function IconImage({ size = 34 }: { size?: number }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl
-                      bg-gradient-to-br from-indigo-100 to-violet-100
-                      dark:from-indigo-950/40 dark:to-violet-950/40">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-             stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
-             className="h-8 w-8 text-indigo-500">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <circle cx="9" cy="9" r="2" />
-          <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
-        </svg>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
+      style={{ width: size, height: size }} className="text-slate-300 dark:text-slate-600">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </svg>
+  );
+}
+
+function IconArrowRight({ size = 15 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ width: size, height: size }}>
+      <path d="M5 12h14M12 5l7 7-7 7" />
+    </svg>
+  );
+}
+
+function IconGrid({ size = 17 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ width: size, height: size }}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+function IconCheck({ size = 12 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+      style={{ width: size, height: size }}>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function EmptyState() {
+  const { t } = useLang();
+  return (
+    <div className="min-h-[28rem] flex flex-col items-center justify-center text-center">
+      <div className="relative grid place-items-center h-20 w-20 rounded-2xl bg-slate-50 dark:bg-slate-800/60 ring-1 ring-slate-200 dark:ring-slate-700 mb-5">
+        <div
+          className="absolute inset-0 rounded-2xl opacity-10"
+          style={{ backgroundImage: 'linear-gradient(135deg, var(--brand-1), var(--brand-2))' }}
+        />
+        <IconImage size={34} />
       </div>
-      <p className="text-sm text-slate-500 dark:text-slate-400">
-        Your generated image will appear here.
-      </p>
+      <p className="text-slate-500 dark:text-slate-400 max-w-xs">{t('emptyTitle')}</p>
       <Link
         to="/gallery"
-        className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold hover:gap-2.5 transition-all"
+        style={{ color: 'var(--brand-1)' }}
       >
-        Or browse your past creations →
+        {t('emptyLink')} <IconArrowRight size={15} />
       </Link>
     </div>
   );
 }
 
 export default function ImageDisplay({ result, loading, error }: ImageDisplayProps) {
+  const { t } = useLang();
   const ext = result?.output_format === 'jpeg' ? 'jpg' : result?.output_format || 'png';
   const downloadName = result?.uuid ? `gpt-image-${result.uuid.slice(0, 8)}.${ext}` : `image.${ext}`;
 
   return (
-    <div className="card min-h-[24rem]">
+    <div className="card">
       {loading && <LoadingSpinner />}
-
       {!loading && error && <ErrorMessage message={error} />}
-
       {!loading && !error && !result && <EmptyState />}
 
       {!loading && !error && result && (
-        <div className="space-y-4 animate-slide-up">
-          <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="space-y-4 anim-fadeUp">
+          {/* image */}
+          <div className="relative aspect-square w-full rounded-xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5 bg-slate-100 dark:bg-slate-950">
             <img
               src={result.image_url}
               alt={result.effective_prompt || result.prompt}
-              className="h-auto w-full"
+              className="h-full w-full object-cover anim-reveal"
               loading="lazy"
             />
+            {result.cached && (
+              <div className="absolute top-3 end-3">
+                <span className="badge badge-amber">{t('cachedBadge')}</span>
+              </div>
+            )}
+            <div className="absolute top-3 start-3">
+              <span className="badge badge-emerald">
+                <IconCheck size={12} /> {t('savedBadge')}
+              </span>
+            </div>
           </div>
 
-          <div className="space-y-3 text-sm">
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700
-                               dark:bg-indigo-950/40 dark:text-indigo-300">
-                {result.size}
-              </span>
-              <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700
-                               dark:bg-violet-950/40 dark:text-violet-300">
-                quality: {result.quality}
-              </span>
-              <span className="rounded-full bg-fuchsia-50 px-2.5 py-1 text-xs font-medium text-fuchsia-700
-                               dark:bg-fuchsia-950/40 dark:text-fuchsia-300">
-                bg: {result.background}
-              </span>
-              {result.cached && (
-                <span title="Returned from cache — no API cost"
-                      className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700
-                                 dark:bg-amber-950/40 dark:text-amber-300">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                       className="h-3 w-3">
-                    <polyline points="23 4 23 10 17 10" />
-                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                  </svg>
-                  Cached
-                </span>
-              )}
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700
-                               dark:bg-emerald-950/40 dark:text-emerald-300">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                     className="h-3 w-3">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Saved
-              </span>
-            </div>
-
-            {result.was_translated && (
-              <details className="group rounded-lg bg-amber-50/50 p-3 dark:bg-amber-950/20">
-                <summary className="cursor-pointer text-xs font-medium text-amber-800 dark:text-amber-300">
-                  ✨ Your prompt was auto-translated to English for better results
-                </summary>
-                <div className="mt-2 space-y-1 text-xs">
-                  <p className="text-slate-600 dark:text-slate-400" dir="auto">
-                    <span className="font-semibold">Original:</span> {result.prompt}
-                  </p>
-                  <p className="text-slate-700 dark:text-slate-300">
-                    <span className="font-semibold">Sent to model:</span> {result.effective_prompt}
-                  </p>
-                </div>
-              </details>
+          {/* meta badges */}
+          <div className="flex flex-wrap gap-2">
+            <span className="badge badge-indigo">{result.size}</span>
+            <span className="badge badge-violet">{t('qualityLabel')}: {result.quality}</span>
+            <span className="badge badge-fuchsia">bg: {result.background}</span>
+            {result.cost_usd > 0 && (
+              <span className="badge badge-emerald">≈ ${result.cost_usd.toFixed(3)}</span>
             )}
+          </div>
 
-            <div className="flex flex-wrap gap-2">
-              <DownloadButton imageUrl={result.image_url} filename={downloadName} />
-              <ShareButton imageUrl={result.image_url} prompt={result.prompt} />
-              <Link
-                to="/gallery"
-                className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition
-                           hover:bg-slate-50 active:scale-[0.97]
-                           dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                     className="h-3.5 w-3.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <path d="M3 9h18" />
-                </svg>
-                View in gallery
-              </Link>
+          {/* tags */}
+          {result.tags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                {t('tagsLabel')}:
+              </span>
+              {result.tags.map((tag) => (
+                <TagChip key={tag.id} name={tag.name} />
+              ))}
             </div>
+          )}
+
+          {/* translation */}
+          {result.was_translated && (
+            <div className="rounded-xl bg-amber-50 dark:bg-amber-500/10 ring-1 ring-amber-200 dark:ring-amber-500/25 px-4 py-3">
+              <p className="text-xs font-semibold text-amber-600 dark:text-amber-300 mb-1">
+                ✦ {t('translatedTo')}
+              </p>
+              <p className="text-sm text-amber-700 dark:text-amber-200" dir="ltr">
+                {result.effective_prompt}
+              </p>
+            </div>
+          )}
+
+          {/* actions */}
+          <div className="grid grid-cols-3 gap-2.5 pt-1">
+            <DownloadButton imageUrl={result.image_url} filename={downloadName} />
+            <ShareButton imageUrl={result.image_url} prompt={result.prompt} />
+            <Link to="/gallery" className="btn-outline">
+              <IconGrid size={17} />
+              {t('viewGallery')}
+            </Link>
           </div>
         </div>
       )}

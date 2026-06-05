@@ -161,15 +161,15 @@ There are two ways to run this: **Docker** (one command, recommended for evaluat
 
 Requires Docker Desktop / Docker Engine v20+ with Compose v2.
 
-Create a `.env` file in the project root with at least:
+From the **repo root**, copy the provided example and set your key:
 
-```env
-OPENAI_API_KEY=sk-your-real-key
-# Optional:
-# WEB_PORT=8080
+```bash
+# repo root
+cp .env.example .env          # macOS / Linux
+copy .env.example .env        # Windows PowerShell
 ```
 
-Then:
+Open `.env` and replace `sk-replace-me` with your real OpenAI API key, then:
 
 ```bash
 docker compose up --build
@@ -192,8 +192,13 @@ python -m venv .venv
 .venv\Scripts\activate              # Windows PowerShell
 # source .venv/bin/activate         # macOS/Linux
 pip install -r requirements.txt
-copy .env.example .env              # Windows
-# cp .env.example .env              # macOS/Linux
+```
+
+Still inside `backend/`, copy the env template and set your key:
+
+```bash
+copy .env.example .env              # Windows PowerShell (run from backend/)
+# cp .env.example .env              # macOS/Linux      (run from backend/)
 ```
 
 Open `backend/.env` and set your `OPENAI_API_KEY`.

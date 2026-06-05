@@ -1,3 +1,16 @@
+# ---------------------------------------------------------------------------
+# ORIGINAL PROTOTYPE — preserved for reference only.
+#
+# This 31-line Gradio script is where the project started. It contains the
+# original typos (`clint` instead of `client`, `respone` instead of
+# `response`) and uses the older `dall-e-3` model.
+#
+# The production rewrite lives in:
+#   backend/app/services/gpt_image_service.py   ← gpt-image-1 wrapper
+#   backend/app/                                 ← full FastAPI application
+#
+# Do NOT import or run this file as part of the application.
+# ---------------------------------------------------------------------------
 from openai import OpenAI
 from dotenv import find_dotenv, load_dotenv
 import gradio as gr

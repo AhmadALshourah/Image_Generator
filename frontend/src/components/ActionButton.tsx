@@ -21,12 +21,36 @@ export default function ActionButton({
   title,
   className = '',
 }: ActionButtonProps) {
-  const styles =
-    variant === 'primary'
-      ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-600 hover:to-violet-600 shadow-md shadow-indigo-500/20'
-      : variant === 'danger'
-      ? 'border border-red-200 bg-white text-red-700 hover:bg-red-50 dark:border-red-900/60 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30'
-      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800';
+  if (variant === 'primary') {
+    return (
+      <button
+        type={type}
+        onClick={onClick}
+        disabled={disabled}
+        title={title}
+        className={`btn-primary h-9 px-3 text-xs ${className}`}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  if (variant === 'danger') {
+    return (
+      <button
+        type={type}
+        onClick={onClick}
+        disabled={disabled}
+        title={title}
+        className={`inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold
+                    text-red-600 dark:text-red-400 ring-1 ring-red-200 dark:ring-red-500/30
+                    hover:bg-red-50 dark:hover:bg-red-500/10 transition-all duration-200
+                    disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      >
+        {children}
+      </button>
+    );
+  }
 
   return (
     <button
@@ -34,8 +58,7 @@ export default function ActionButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition
-                  active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 ${styles} ${className}`}
+      className={`btn-outline h-9 px-3 text-xs ${className}`}
     >
       {children}
     </button>

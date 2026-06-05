@@ -7,10 +7,6 @@ interface Props {
 }
 
 export default function TagChip({ name, count, active, onClick, onRemove }: Props) {
-  const base = active
-    ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:border-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300'
-    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800';
-
   return (
     <span
       role={onClick ? 'button' : undefined}
@@ -18,29 +14,21 @@ export default function TagChip({ name, count, active, onClick, onRemove }: Prop
       onClick={onClick}
       onKeyDown={(e) => {
         if (!onClick) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }
       }}
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition
-                  ${onClick ? 'cursor-pointer' : ''} ${base}`}
+      className={`chip ${active ? 'chip-active' : 'chip-inactive'} ${onClick ? 'cursor-pointer' : ''}`}
+      style={active ? { backgroundImage: 'linear-gradient(135deg, var(--brand-1), var(--brand-2))' } : {}}
     >
       <span>#{name}</span>
       {typeof count === 'number' && (
-        <span className="rounded bg-slate-100 px-1 text-[10px] text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-          {count}
-        </span>
+        <span className="opacity-60">· {count}</span>
       )}
       {onRemove && (
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove();
-          }}
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
           aria-label={`Remove tag ${name}`}
-          className="ml-0.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+          className="grid place-items-center h-5 w-5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 ms-0.5"
         >
           ×
         </button>

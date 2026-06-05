@@ -182,6 +182,8 @@ export function useAuthStatus(): UseQueryResult<AuthStatusResponse, Error> {
   return useQuery({
     queryKey: queryKeys.auth.status,
     queryFn: fetchAuthStatus,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,       // auth config changes only on redeploy; re-validate every 5 min
+    refetchOnWindowFocus: false, // don't hit /api/auth/status on every tab switch
+    retry: false,                // if the endpoint is down treat as "auth disabled", don't retry
   });
 }

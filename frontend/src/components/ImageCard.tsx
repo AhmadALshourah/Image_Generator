@@ -1,3 +1,4 @@
+import { useLang } from '../context/LangContext';
 import type { ImageRecord } from '../types/api';
 
 export interface ImageCardProps {
@@ -6,66 +7,48 @@ export interface ImageCardProps {
 }
 
 export default function ImageCard({ image, onClick }: ImageCardProps) {
-  const aspectClass =
-    image.size === '1024x1536'
-      ? 'aspect-[1024/1536]'
-      : image.size === '1536x1024'
-      ? 'aspect-[1536/1024]'
-      : 'aspect-square';
+  const { t, lang } = useLang();
 
-  const formattedDate = new Date(image.created_at).toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const aspectClass =
+    image.size === '1024x1536' ? 'aspect-[4/5]' :
+    image.size === '1536x1024' ? 'aspect-[16/10]' :
+    'aspect-square';
+
+  const formattedDate = new Date(image.created_at).toLocaleDateString(
+    lang === 'ar' ? 'ar-SA' : undefined,
+    { month: 'short', day: 'numeric', year: 'numeric' }
+  );
 
   const previewUrl = image.thumbnail_url || image.image_url;
-
-  const sizeLabel =
-    image.size === '1024x1024'
-      ? 'Square'
-      : image.size === '1024x1536'
-      ? 'Portrait'
-      : image.size === '1536x1024'
-      ? 'Landscape'
-      : 'Auto';
 
   return (
     <button
       type="button"
       onClick={() => onClick?.(image)}
-      className="group relative block w-full overflow-hidden rounded-2xl border border-slate-200 bg-white text-left
-                 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-slate-300/30
-                 focus:outline-none focus:ring-2 focus:ring-indigo-500
-                 dark:border-slate-800 dark:bg-slate-900 dark:hover:shadow-black/50"
+      className="group text-start anim-fadeUp focus:outline-none"
     >
-      <div className={`overflow-hidden bg-slate-100 dark:bg-slate-800 ${aspectClass}`}>
+      <div className={`relative ${aspectClass} w-full rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-slate-800 shadow-sm group-hover:shadow-xl group-hover:shadow-slate-300/40 dark:group-hover:shadow-black/50 transition-all duration-300 group-hover:-translate-y-1`}>
         <img
           src={previewUrl}
           alt={image.prompt}
           loading="lazy"
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover"
         />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        {image.cached && (
+          <span className="absolute top-2 end-2">
+            <span className="badge badge-amber">{t('cachedBadge')}</span>
+          </span>
+        )}
       </div>
-
-      <div className="space-y-1.5 p-3">
-        <p className="line-clamp-2 text-xs font-medium leading-snug text-slate-800 dark:text-slate-200"
-           dir="auto">
+      <div className="px-0.5 pt-2.5">
+        <p dir="auto" className="text-sm text-slate-700 dark:text-slate-200 leading-snug line-clamp-2">
           {image.prompt}
         </p>
-        <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-500">
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
           <span>{formattedDate}</span>
-          <div className="flex items-center gap-1">
-            {image.was_translated && (
-              <span title="Auto-translated from another language"
-                    className="rounded-full bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300">
-                AR→EN
-              </span>
-            )}
-            <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-              {sizeLabel}
-            </span>
-          </div>
+          {image.was_translated && <span className="badge badge-amber">AR→EN</span>}
+          <span className="ms-auto font-mono">{image.size}</span>
         </div>
       </div>
     </button>

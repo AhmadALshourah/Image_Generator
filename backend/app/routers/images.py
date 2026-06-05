@@ -18,9 +18,10 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sse_starlette.sse import EventSourceResponse
 
+from app.limiter import generate_rate_limit, limiter
 from app.models import Image
 from app.repositories import ImageRepository, get_image_repository
 from app.schemas import (
@@ -137,7 +138,9 @@ async def health() -> HealthResponse:
 
 
 @router.post("/generate", response_model=ImageRecord, status_code=status.HTTP_201_CREATED)
+@limiter.limit(generate_rate_limit)
 async def generate(
+    http_request: Request,
     request: GenerateRequest,
     repo: ImageRepository = Depends(get_image_repository),
     _: str = Depends(auth_service.require_owner),
@@ -161,6 +164,9 @@ async def generate(
         request, effective_prompt=resolved.effective_prompt
     )
 
+    # Second-pass output moderation (opt-in via OUTPUT_MODERATION_ENABLED=true).
+    await moderation_service.moderate_image_output(result.image_bytes, result.output_format)
+
     image = await _persist(
         request=request,
         resolved=resolved,
@@ -173,7 +179,9 @@ async def generate(
 
 
 @router.post("/generate/stream")
+@limiter.limit(generate_rate_limit)
 async def generate_stream(
+    http_request: Request,
     request: GenerateRequest,
     repo: ImageRepository = Depends(get_image_repository),
     _: str = Depends(auth_service.require_owner),
@@ -248,6 +256,13 @@ async def generate_stream(
                     "event": "error",
                     "data": json.dumps({"detail": "No final image returned by provider"}),
                 }
+                return
+
+            # Second-pass output moderation (opt-in via OUTPUT_MODERATION_ENABLED=true).
+            try:
+                await moderation_service.moderate_image_output(final_bytes, final_format)
+            except HTTPException as exc:
+                yield {"event": "error", "data": json.dumps({"detail": str(exc.detail)})}
                 return
 
             yield {"event": "stage", "data": json.dumps({"stage": "saving"})}

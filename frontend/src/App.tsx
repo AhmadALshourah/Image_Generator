@@ -8,43 +8,47 @@ import PageFallback from './components/PageFallback';
 import { useTheme } from './hooks/useTheme';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
+import { LangProvider, useLang } from './context/LangContext';
 
-// Code-splitting: heavier secondary pages load on demand.
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
 const StatsPage = lazy(() => import('./pages/StatsPage'));
 
-export default function App() {
+function AppShell() {
   const { theme, toggleTheme } = useTheme();
+  const { t } = useLang();
 
   return (
+    <div className="min-h-screen theme-anim">
+      <Header theme={theme} onToggleTheme={toggleTheme} />
+
+      <ErrorBoundary>
+        <Suspense fallback={<PageFallback />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/stats" element={<StatsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+
+      <footer className="max-w-6xl mx-auto px-6 py-10 text-center border-t border-slate-200 dark:border-slate-800 mt-4">
+        <p className="text-xs text-slate-400 dark:text-slate-600">{t('footer')}</p>
+      </footer>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
     <BrowserRouter>
-      <AuthProvider>
-        <ToastProvider>
-          <div className="relative min-h-screen">
-            <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[40rem]
-                            bg-gradient-to-br from-indigo-100/60 via-violet-50 to-transparent
-                            dark:from-indigo-950/30 dark:via-violet-950/20 dark:to-transparent" />
-
-            <Header theme={theme} onToggleTheme={toggleTheme} />
-
-            <ErrorBoundary>
-              <Suspense fallback={<PageFallback />}>
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/gallery" element={<GalleryPage />} />
-                  <Route path="/stats" element={<StatsPage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </Suspense>
-            </ErrorBoundary>
-
-            <footer className="border-t border-slate-200 py-6 text-center text-xs text-slate-500
-                               dark:border-slate-800 dark:text-slate-500">
-              Built with React, TypeScript, Tailwind CSS, TanStack Query, and FastAPI.
-            </footer>
-          </div>
-        </ToastProvider>
-      </AuthProvider>
+      <LangProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppShell />
+          </ToastProvider>
+        </AuthProvider>
+      </LangProvider>
     </BrowserRouter>
   );
 }

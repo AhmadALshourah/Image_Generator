@@ -2,16 +2,12 @@ import { useState, type FormEvent } from 'react';
 
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useLang } from '../context/LangContext';
 
-/**
- * Header widget: shows a "Sign in" button when auth is enabled and the user
- * isn't logged in. After login, shows the username + "Sign out".
- *
- * If auth is disabled on the backend (AUTH_ENABLED=false), this renders nothing.
- */
 export default function LoginButton() {
   const auth = useAuth();
   const toast = useToast();
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -27,15 +23,10 @@ export default function LoginButton() {
         </span>
         <button
           type="button"
-          onClick={() => {
-            auth.logout();
-            toast.info('Signed out');
-          }}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700
-                     transition hover:bg-slate-50
-                     dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          onClick={() => { auth.logout(); toast.info(t('toastSignedOut')); }}
+          className="btn-outline h-9 px-3 text-xs"
         >
-          Sign out
+          {t('signout')}
         </button>
       </div>
     );
@@ -46,13 +37,13 @@ export default function LoginButton() {
     setSubmitting(true);
     try {
       await auth.login(username, password);
-      toast.success('Signed in');
+      toast.success(t('toastSignedIn'));
       setOpen(false);
       setUsername('');
       setPassword('');
     } catch (err) {
       const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
-      toast.error(typeof detail === 'string' ? detail : 'Sign-in failed');
+      toast.error(typeof detail === 'string' ? detail : t('toastSignFail'));
     } finally {
       setSubmitting(false);
     }
@@ -63,63 +54,42 @@ export default function LoginButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700
-                   transition hover:bg-slate-50
-                   dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        className="hidden sm:inline-flex items-center h-10 px-4 rounded-xl text-sm font-semibold text-white"
+        style={{ backgroundImage: 'linear-gradient(135deg, var(--brand-1), var(--brand-2))' }}
       >
-        Sign in
+        {t('signin')}
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 anim-fadeIn flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         >
           <form
             onSubmit={handleSubmit}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl
-                       dark:border-slate-800 dark:bg-slate-950"
+            className="anim-scaleIn w-full max-w-sm space-y-4 card shadow-2xl"
           >
-            <h2 className="text-lg font-bold">Owner sign-in</h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Authentication protects write operations (generate / delete / edit tags).
-            </p>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t('ownerSignin')}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('authNote')}</p>
 
-            <div className="space-y-2">
-              <label className="block text-xs font-medium">Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoFocus
-                required
-                className="input-field"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-xs font-medium">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                className="input-field"
-              />
-            </div>
+            <label className="block">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5 block">{t('usernameLabel')}</span>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
+                autoFocus required className="input-field" />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5 block">{t('passwordLabel')}</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                required className="input-field" />
+            </label>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700
-                           transition hover:bg-slate-50
-                           dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                Cancel
+              <button type="button" onClick={() => setOpen(false)} className="btn-outline h-9 px-4 text-sm">
+                {t('cancelLabel')}
               </button>
-              <button type="submit" disabled={submitting} className="btn-primary">
-                {submitting ? 'Signing in…' : 'Sign in'}
+              <button type="submit" disabled={submitting} className="btn-primary h-9 px-4 text-sm">
+                {submitting ? t('signingIn') : t('signin')}
               </button>
             </div>
           </form>

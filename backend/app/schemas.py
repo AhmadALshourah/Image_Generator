@@ -53,13 +53,15 @@ class ImageRecord(BaseModel):
     def from_orm_with_urls(
         cls,
         image,
-        base_path: str = "/api/images/files",
         cached: bool = False,
     ) -> "ImageRecord":
+        from app.storage.factory import get_storage_backend
+
+        storage = get_storage_backend()
         record = cls.model_validate(image)
-        record.image_url = f"{base_path}/{image.filename}"
+        record.image_url = storage.public_url(image.filename)
         record.thumbnail_url = (
-            f"{base_path}/{image.thumbnail_filename}"
+            storage.public_url(image.thumbnail_filename)
             if image.thumbnail_filename
             else record.image_url
         )

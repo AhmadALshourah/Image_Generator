@@ -3,41 +3,190 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-1: #6366f1;
+    --brand-2: #8b5cf6;
+    --brand-soft: #818cf8;
+    --ring: #6366f1;
+  }
+
   html {
-    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-family: 'Inter', 'Cairo', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html[dir="rtl"] {
+    font-family: 'Cairo', 'Inter', ui-sans-serif, system-ui, sans-serif;
   }
 
   body {
-    @apply min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300;
+    margin: 0;
+  }
+}
+
+@layer utilities {
+  /* smooth theme transition */
+  .theme-anim,
+  .theme-anim * {
+    transition: background-color 0.35s ease, border-color 0.35s ease, color 0.25s ease;
   }
 
-  html.dark body {
-    @apply bg-slate-950 text-slate-100;
+  /* hide native scrollbar in chip rows */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* custom scrollbar for modal detail panel */
+  .thin-scroll::-webkit-scrollbar { width: 8px; }
+  .thin-scroll::-webkit-scrollbar-thumb {
+    background: rgba(120, 120, 140, 0.35);
+    border-radius: 99px;
   }
+
+  /* shimmer skeleton effect */
+  .shimmer { position: relative; overflow: hidden; }
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* animation helpers */
+  .pulse-ring { animation: pulseRing 1.8s ease-out infinite; }
+  .spin       { animation: spin 0.9s linear infinite; }
+
+  .motion-ready .anim-reveal  { animation: revealBlur 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .motion-ready .anim-fadeUp  { animation: fadeUp 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .motion-ready .anim-fadeIn  { animation: fadeIn 0.5s ease both; }
+  .motion-ready .anim-scaleIn { animation: scaleIn 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+  .motion-ready .anim-slideIn { animation: slideInRight 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+  [data-reduce-motion="true"] .anim-fadeUp,
+  [data-reduce-motion="true"] .anim-fadeIn,
+  [data-reduce-motion="true"] .anim-scaleIn,
+  [data-reduce-motion="true"] .anim-slideIn,
+  [data-reduce-motion="true"] .anim-reveal { animation: none !important; }
 }
 
 @layer components {
+  /* brand gradient utility */
+  .brand-grad {
+    background-image: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  }
+
+  /* card */
+  .card {
+    @apply rounded-2xl bg-white dark:bg-slate-900
+           ring-1 ring-slate-200 dark:ring-slate-800
+           shadow-xl shadow-slate-200/40 dark:shadow-black/40
+           p-5 sm:p-6;
+  }
+
+  /* primary button */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl
-           bg-gradient-to-r from-indigo-500 to-violet-500
-           px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20
-           transition-all hover:from-indigo-600 hover:to-violet-600
-           hover:shadow-indigo-500/30 active:scale-[0.98]
-           disabled:cursor-not-allowed disabled:opacity-50;
+           px-5 py-2.5 text-sm font-semibold text-white
+           shadow-lg shadow-indigo-500/25
+           transition-all duration-200
+           hover:shadow-indigo-500/40 hover:-translate-y-0.5 active:translate-y-0
+           disabled:cursor-not-allowed disabled:opacity-50
+           focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    background-image: linear-gradient(135deg, var(--brand-1), var(--brand-2));
+    --tw-ring-color: var(--ring);
   }
 
-  .card {
-    @apply rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-xl shadow-slate-200/40 backdrop-blur-sm
-           dark:border-slate-800 dark:bg-slate-900/70 dark:shadow-black/40;
+  /* outline button */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl
+           px-4 py-2 text-sm font-semibold
+           text-slate-700 dark:text-slate-200
+           ring-1 ring-slate-200 dark:ring-slate-700
+           hover:bg-slate-50 dark:hover:bg-slate-800
+           transition-all duration-200
+           disabled:cursor-not-allowed disabled:opacity-50
+           focus:outline-none focus-visible:ring-2;
+    --tw-ring-color: var(--ring);
   }
 
+  /* input field */
   .input-field {
-    @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm
-           placeholder-slate-400 transition
-           focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20
-           dark:border-slate-700 dark:bg-slate-900 dark:placeholder-slate-500
-           dark:focus:border-indigo-500;
+    @apply w-full rounded-xl bg-slate-50 dark:bg-slate-950/50
+           ring-1 ring-slate-200 dark:ring-slate-800
+           px-4 py-3 text-[15px] leading-relaxed
+           text-slate-800 dark:text-slate-100
+           placeholder:text-slate-400 dark:placeholder:text-slate-600
+           focus:outline-none focus:ring-2 transition-shadow;
+    --tw-ring-color: var(--ring);
+  }
+
+  /* badge */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ring-1;
+  }
+  .badge-indigo  { @apply text-indigo-600  dark:text-indigo-300  bg-indigo-50  dark:bg-indigo-500/15  ring-indigo-200  dark:ring-indigo-500/25; }
+  .badge-violet  { @apply text-violet-600  dark:text-violet-300  bg-violet-50  dark:bg-violet-500/15  ring-violet-200  dark:ring-violet-500/25; }
+  .badge-fuchsia { @apply text-fuchsia-600 dark:text-fuchsia-300 bg-fuchsia-50 dark:bg-fuchsia-500/15 ring-fuchsia-200 dark:ring-fuchsia-500/25; }
+  .badge-emerald { @apply text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/15 ring-emerald-200 dark:ring-emerald-500/25; }
+  .badge-amber   { @apply text-amber-600   dark:text-amber-300   bg-amber-50   dark:bg-amber-500/15   ring-amber-200   dark:ring-amber-500/25; }
+  .badge-red     { @apply text-red-600     dark:text-red-300     bg-red-50     dark:bg-red-500/15     ring-red-200     dark:ring-red-500/25; }
+  .badge-slate   { @apply text-slate-600   dark:text-slate-300   bg-slate-100  dark:bg-slate-800      ring-slate-200   dark:ring-slate-700; }
+
+  /* chip (style preset / filter tag) */
+  .chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5
+           text-sm font-medium transition-all duration-200
+           focus:outline-none focus-visible:ring-2;
+    --tw-ring-color: var(--ring);
+  }
+  .chip-inactive {
+    @apply text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800
+           hover:bg-slate-200 dark:hover:bg-slate-700 ring-1 ring-transparent;
+  }
+  .chip-active {
+    @apply text-white shadow-md shadow-indigo-500/20;
+    background-image: linear-gradient(135deg, var(--brand-1), var(--brand-2));
   }
 }
+
+/* ---- keyframes ---- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 var(--ring-color, rgba(99,102,241,.45)); }
+  70%  { box-shadow: 0 0 0 7px rgba(99,102,241,0); }
+  100% { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+@keyframes revealBlur {
+  from { filter: blur(28px) saturate(1.4); transform: scale(1.06); opacity: 0.35; }
+  to   { filter: blur(0) saturate(1);     transform: scale(1);    opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
+  .theme-anim, .theme-anim * { transition: none !important; }
+}
+
+#root { min-height: 100vh; }
