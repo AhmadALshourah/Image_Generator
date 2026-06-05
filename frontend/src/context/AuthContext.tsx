@@ -15,7 +15,7 @@ interface AuthState {
 
 interface AuthApi extends AuthState {
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -45,8 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const doRegister = useCallback(
-    async (username: string, password: string) => {
-      const { access_token } = await registerApi({ username, password });
+    async (username: string, email: string, password: string) => {
+      const { access_token } = await registerApi({ username, email, password });
       setStoredToken(access_token);
       setHasToken(true);
       await qc.invalidateQueries({ queryKey: ['auth', 'status'] });

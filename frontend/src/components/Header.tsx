@@ -112,7 +112,7 @@ export default function Header({ theme, onToggleTheme }: HeaderProps) {
   ].filter(item => item.always || (isAuthenticated && !isAdmin));
 
   return (
-    <header className="sticky top-0 z-30 border-b border-slate-200/70 dark:border-slate-800/70 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-30 border-b border-slate-200/70 dark:border-violet-900/30 bg-white/70 dark:bg-[#0d0a1e]/80 backdrop-blur-xl">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
 
         {/* Logo */}

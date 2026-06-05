@@ -8,6 +8,15 @@
     --brand-2: #8b5cf6;
     --brand-soft: #818cf8;
     --ring: #6366f1;
+
+    /* dark palette — matches auth screen */
+    --dark-bg:        #0d0a1e;
+    --dark-bg-mid:    #130d2a;
+    --dark-card:      rgba(22, 14, 48, 0.85);
+    --dark-card-ring: rgba(109, 40, 217, 0.18);
+    --dark-surface:   rgba(255, 255, 255, 0.05);
+    --dark-border:    rgba(109, 40, 217, 0.15);
+    --dark-input:     rgba(255, 255, 255, 0.06);
   }
 
   html {
@@ -79,10 +88,16 @@
 
   /* card */
   .card {
-    @apply rounded-2xl bg-white dark:bg-slate-900
-           ring-1 ring-slate-200 dark:ring-slate-800
-           shadow-xl shadow-slate-200/40 dark:shadow-black/40
+    @apply rounded-2xl bg-white
+           ring-1 ring-slate-200
+           shadow-xl shadow-slate-200/40
            p-5 sm:p-6;
+  }
+  .dark .card {
+    background-color: var(--dark-card);
+    --tw-ring-color: var(--dark-card-ring);
+    border-color: var(--dark-border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   }
 
   /* primary button */
@@ -102,9 +117,9 @@
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2 rounded-xl
            px-4 py-2 text-sm font-semibold
-           text-slate-700 dark:text-slate-200
-           ring-1 ring-slate-200 dark:ring-slate-700
-           hover:bg-slate-50 dark:hover:bg-slate-800
+           text-slate-700 dark:text-violet-200
+           ring-1 ring-slate-200 dark:ring-violet-800/50
+           hover:bg-slate-50 dark:hover:bg-white/5
            transition-all duration-200
            disabled:cursor-not-allowed disabled:opacity-50
            focus:outline-none focus-visible:ring-2;
@@ -113,14 +128,20 @@
 
   /* input field */
   .input-field {
-    @apply w-full rounded-xl bg-slate-50 dark:bg-slate-950/50
-           ring-1 ring-slate-200 dark:ring-slate-800
+    @apply w-full rounded-xl bg-slate-50
+           ring-1 ring-slate-200
            px-4 py-3 text-[15px] leading-relaxed
-           text-slate-800 dark:text-slate-100
-           placeholder:text-slate-400 dark:placeholder:text-slate-600
+           text-slate-800
+           placeholder:text-slate-400
            focus:outline-none focus:ring-2 transition-shadow;
     --tw-ring-color: var(--ring);
   }
+  .dark .input-field {
+    background-color: var(--dark-input);
+    border-color: var(--dark-border);
+    color: #e2d9f3;
+  }
+  .dark .input-field::placeholder { color: rgba(196,181,253,0.35); }
 
   /* badge */
   .badge {
@@ -142,8 +163,9 @@
     --tw-ring-color: var(--ring);
   }
   .chip-inactive {
-    @apply text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800
-           hover:bg-slate-200 dark:hover:bg-slate-700 ring-1 ring-transparent;
+    @apply text-slate-600 dark:text-violet-200 bg-slate-100 dark:bg-white/5
+           hover:bg-slate-200 dark:hover:bg-white/10 ring-1 ring-transparent
+           dark:ring-violet-800/30;
   }
   .chip-active {
     @apply text-white shadow-md shadow-indigo-500/20;
@@ -183,6 +205,20 @@
   from { filter: blur(28px) saturate(1.4); transform: scale(1.06); opacity: 0.35; }
   to   { filter: blur(0) saturate(1);     transform: scale(1);    opacity: 1; }
 }
+
+/* ── dark mode — purple base theme ────────────────────────────────────────── */
+.dark body {
+  background: linear-gradient(160deg, #0d0a1e 0%, #130d2a 60%, #0a0818 100%);
+  background-attachment: fixed;
+}
+
+/* dark badges — purple-tinted surface */
+.dark .badge-indigo  { background-color: rgba(99,102,241,0.15);  color: #a5b4fc; border-color: rgba(99,102,241,0.25); }
+.dark .badge-violet  { background-color: rgba(139,92,246,0.15);  color: #c4b5fd; border-color: rgba(139,92,246,0.25); }
+.dark .badge-fuchsia { background-color: rgba(217,70,239,0.15);  color: #f0abfc; border-color: rgba(217,70,239,0.25); }
+.dark .badge-emerald { background-color: rgba(16,185,129,0.15);  color: #6ee7b7; border-color: rgba(16,185,129,0.25); }
+.dark .badge-amber   { background-color: rgba(245,158,11,0.15);  color: #fcd34d; border-color: rgba(245,158,11,0.25); }
+.dark .badge-slate   { background-color: rgba(255,255,255,0.07); color: #c4b5fd; border-color: rgba(167,139,250,0.2); }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }

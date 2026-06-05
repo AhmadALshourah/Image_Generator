@@ -15,7 +15,6 @@ export const TR: Record<string, Record<Lang, string>> = {
   // ── create page ───────────────────────────────────────────────────────────
   describe:        { en: 'Describe your image',               ar: 'صِف صورتك' },
   promptPh:        { en: 'A majestic dragon flying over snow-capped mountains at sunset… (Arabic prompts are auto-translated)', ar: 'تنّين مهيب يحلّق فوق جبال مكسوّة بالثلج عند الغروب… (المطالبات العربية تُترجم تلقائياً)' },
-  voiceInput:      { en: 'Voice input',                       ar: 'إدخال صوتي' },
   enhanceAI:       { en: 'Enhance with AI',                   ar: 'تحسين بالذكاء الاصطناعي' },
   enhancing:       { en: 'Enhancing…',                        ar: 'جارٍ التحسين…' },
   styles:          { en: 'Style presets',                     ar: 'أنماط جاهزة' },
@@ -107,6 +106,8 @@ export const TR: Record<string, Record<Lang, string>> = {
   // ── stats page ────────────────────────────────────────────────────────────
   usageCost:       { en: 'Usage & cost',                      ar: 'الاستخدام والتكلفة' },
   usageSub:        { en: 'All figures are estimates based on gpt-image-1 pricing.', ar: 'جميع الأرقام تقديرية بناءً على تسعير gpt-image-1.' },
+  statsAdminBadge: { en: 'All users — admin view',            ar: 'جميع المستخدمين — عرض الأدمن' },
+  statsUserBadge:  { en: 'Your Library only',                 ar: 'مكتبتك فقط' },
   imagesGen:       { en: 'Images generated',                  ar: 'الصور المولّدة' },
   totalSpend:      { en: 'Total spend',                       ar: 'إجمالي الإنفاق' },
   cacheHits:       { en: 'Cache hits',                        ar: 'إصابات الذاكرة' },
@@ -136,7 +137,12 @@ export const TR: Record<string, Record<Lang, string>> = {
   ownerSignin:     { en: 'Owner sign-in',                     ar: 'تسجيل دخول المالك' },
   authNote:        { en: 'Authentication protects write operations (generate / delete / edit tags).', ar: 'المصادقة تحمي عمليات الكتابة (توليد / حذف / تعديل الوسوم).' },
   usernameLabel:   { en: 'Username',                          ar: 'اسم المستخدم' },
+  emailLabel:      { en: 'Email',                             ar: 'البريد الإلكتروني' },
   passwordLabel:   { en: 'Password',                          ar: 'كلمة المرور' },
+  confirmPassLabel:{ en: 'Confirm Password',                  ar: 'تأكيد كلمة المرور' },
+  passwordMismatch:{ en: 'Passwords do not match',            ar: 'كلمتا المرور غير متطابقتين' },
+  showPassword:    { en: 'Show password',                     ar: 'إظهار كلمة المرور' },
+  hidePassword:    { en: 'Hide password',                     ar: 'إخفاء كلمة المرور' },
   cancelLabel:     { en: 'Cancel',                            ar: 'إلغاء' },
   signingIn:       { en: 'Signing in…',                       ar: 'جارٍ الدخول…' },
   // ── setup / register ──────────────────────────────────────────────────────
@@ -166,7 +172,6 @@ export const TR: Record<string, Record<Lang, string>> = {
   toastShared:     { en: 'Shared!',                           ar: 'تمت المشاركة!' },
   toastLinkCopied: { en: 'Link copied to clipboard',          ar: 'تم نسخ الرابط' },
   toastEnhanced:   { en: 'Prompt enhanced with AI.',          ar: 'تم تحسين المطالبة بالذكاء الاصطناعي.' },
-  toastVoice:      { en: 'Voice transcribed',                 ar: 'تم نسخ الصوت' },
   toastSignedIn:   { en: 'Signed in',                         ar: 'تم الدخول' },
   toastSignedOut:  { en: 'Signed out',                        ar: 'تم الخروج' },
   toastSignFail:   { en: 'Sign-in failed',                    ar: 'فشل تسجيل الدخول' },

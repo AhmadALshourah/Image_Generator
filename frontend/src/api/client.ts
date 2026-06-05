@@ -12,7 +12,6 @@ import type {
   LoginRequest,
   LoginResponse,
   RegisterRequest,
-  SimilarPromptsResponse,
   StatsResponse,
   TagListResponse,
 } from '../types/api';
@@ -94,13 +93,6 @@ export async function setImageTags(imageId: number, tags: string[]): Promise<Ima
 }
 
 // ---- Similar prompts (#17) -----------------------------------------------
-
-export async function fetchSimilarPrompts(q: string, topK = 3): Promise<SimilarPromptsResponse> {
-  const { data } = await apiClient.get<SimilarPromptsResponse>('/prompts/similar', {
-    params: { q, top_k: topK },
-  });
-  return data;
-}
 
 // ---- Stats (#18) ---------------------------------------------------------
 

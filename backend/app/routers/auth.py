@@ -18,13 +18,19 @@ async def register(
     db: AsyncSession = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> LoginResponse:
-    """Create the owner account. Only works when no account exists yet."""
-    if await auth_service.user_exists(db):
+    # Check username uniqueness
+    if await auth_service.get_user(db, request.username):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="An account already exists. Please sign in instead.",
+            detail="Username already taken.",
         )
-    await auth_service.create_user(db, request.username, request.password)
+    # Check email uniqueness
+    if await auth_service.get_user_by_email(db, request.email):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+    await auth_service.create_user(db, request.username, request.password, email=request.email)
     token, expires_in = auth_service.issue_token(settings, subject=request.username)
     return LoginResponse(access_token=token, token_type="bearer", expires_in=expires_in)
 

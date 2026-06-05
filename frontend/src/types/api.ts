@@ -94,19 +94,6 @@ export interface EnhancePromptResponse {
   created_at: string;
 }
 
-export interface SimilarPromptResult {
-  id: number;
-  prompt: string;
-  effective_prompt: string;
-  score: number;
-  thumbnail_url: string;
-}
-
-export interface SimilarPromptsResponse {
-  query: string;
-  items: SimilarPromptResult[];
-}
-
 export interface CostByDay {
   day: string;
   images: number;
@@ -125,6 +112,7 @@ export interface StatsResponse {
 
 export interface RegisterRequest {
   username: string;
+  email: string;
   password: string;
 }
 

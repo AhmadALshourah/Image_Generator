@@ -3,8 +3,6 @@ import { useState, type FormEvent } from 'react';
 import AdvancedOptions, { type AdvancedOptionsValues } from './AdvancedOptions';
 import EnhancePromptButton from './EnhancePromptButton';
 import StylePresets from './StylePresets';
-import VoiceInputButton from './VoiceInputButton';
-import SimilarPrompts from './SimilarPrompts';
 import { useLang } from '../context/LangContext';
 import type { GenerateRequest } from '../types/api';
 
@@ -54,17 +52,17 @@ export default function PromptForm({ onSubmit, loading }: PromptFormProps) {
   const [prompt, setPrompt] = useState('');
   const [options, setOptions] = useState<AdvancedOptionsValues>(DEFAULT_OPTIONS);
 
+  const [styleSuffixes, setStyleSuffixes] = useState<string[]>([]);
+
   const trimmed = prompt.trim();
   const disabled = loading || trimmed.length < 3;
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (disabled) return;
-    onSubmit({ prompt: trimmed, ...options });
-  };
-
-  const appendSuffix = (suffix: string) => {
-    setPrompt((p) => (p.trim().length === 0 ? suffix.replace(/^,\s*/, '') : p + suffix));
+    // Append selected style suffixes silently — textarea stays clean
+    const finalPrompt = trimmed + styleSuffixes.join('');
+    onSubmit({ prompt: finalPrompt, ...options });
   };
 
   const samples = lang === 'ar' ? SAMPLE_PROMPTS_AR : SAMPLE_PROMPTS_EN;
@@ -75,12 +73,7 @@ export default function PromptForm({ onSubmit, loading }: PromptFormProps) {
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">{t('describe')}</h2>
         <div className="flex items-center gap-1.5">
-          <VoiceInputButton
-            onTranscript={(text) => setPrompt((p) => (p ? `${p.trimEnd()} ${text}` : text))}
-            lang={looksArabic(prompt) ? 'ar-SA' : 'en-US'}
-            disabled={loading}
-          />
-          <EnhancePromptButton prompt={prompt} onEnhanced={setPrompt} disabled={loading} />
+<EnhancePromptButton prompt={prompt} onEnhanced={setPrompt} disabled={loading} />
         </div>
       </div>
 
@@ -102,9 +95,7 @@ export default function PromptForm({ onSubmit, loading }: PromptFormProps) {
         </span>
       </div>
 
-      {trimmed.length >= 4 && <SimilarPrompts prompt={trimmed} onPick={setPrompt} />}
-
-      <StylePresets onApply={appendSuffix} disabled={loading} />
+<StylePresets onChange={setStyleSuffixes} disabled={loading} />
 
       <AdvancedOptions values={options} onChange={setOptions} disabled={loading} />
 

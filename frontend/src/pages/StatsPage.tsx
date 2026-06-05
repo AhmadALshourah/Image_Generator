@@ -2,6 +2,7 @@ import { useStatsQuery } from '../api/queries';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import { useLang } from '../context/LangContext';
+import { useAuth } from '../context/AuthContext';
 
 function formatUsd(n: number): string {
   return `$${n.toFixed(2)}`;
@@ -94,6 +95,7 @@ function Distribution({ title, data, delay = '0s', noDataLabel }: {
 
 export default function StatsPage() {
   const { t } = useLang();
+  const { isAdmin } = useAuth();
   const { data, isLoading, error } = useStatsQuery();
 
   if (isLoading && !data) return (
@@ -111,9 +113,23 @@ export default function StatsPage() {
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="mb-6 anim-fadeUp">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-          {t('usageCost')}
-        </h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+            {t('usageCost')}
+          </h1>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+            isAdmin
+              ? 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300'
+              : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
+          }`}>
+            {isAdmin ? (
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            ) : (
+              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            )}
+            {isAdmin ? t('statsAdminBadge') : t('statsUserBadge')}
+          </span>
+        </div>
         <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{t('usageSub')}</p>
       </div>
 

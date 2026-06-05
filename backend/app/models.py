@@ -34,6 +34,7 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(254), unique=True, index=True, nullable=True)
     hashed_password: Mapped[str] = mapped_column(String(128), nullable=False)
     # 'admin' can manage the public Gallery; 'user' has a private Library.
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="user")

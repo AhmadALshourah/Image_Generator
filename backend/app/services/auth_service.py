@@ -58,15 +58,32 @@ async def get_user(db: AsyncSession, username: str):
     return result.scalar_one_or_none()
 
 
+async def get_user_by_email(db: AsyncSession, email: str):
+    from app.models import User
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
 async def user_exists(db: AsyncSession) -> bool:
     from app.models import User
     result = await db.execute(select(func.count()).select_from(User))
     return (result.scalar() or 0) > 0
 
 
-async def create_user(db: AsyncSession, username: str, plain_password: str, role: str = "user"):
+async def create_user(
+    db: AsyncSession,
+    username: str,
+    plain_password: str,
+    role: str = "user",
+    email: str | None = None,
+):
     from app.models import User
-    user = User(username=username, hashed_password=hash_password(plain_password), role=role)
+    user = User(
+        username=username,
+        email=email,
+        hashed_password=hash_password(plain_password),
+        role=role,
+    )
     db.add(user)
     await db.commit()
     await db.refresh(user)

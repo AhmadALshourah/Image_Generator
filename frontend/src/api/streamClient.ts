@@ -9,6 +9,7 @@
  * No external dependencies — ~40 lines of standard browser APIs.
  */
 import type { GenerateRequest } from '../types/api';
+import { getStoredToken } from './client';
 
 export interface ParsedSSE {
   event: string;
@@ -35,11 +36,13 @@ export async function streamGenerate({
   signal,
   onEvent,
 }: StreamGenerateOptions): Promise<void> {
+  const token = getStoredToken();
   const response = await fetch('/api/generate/stream', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'text/event-stream',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(payload),
     signal,

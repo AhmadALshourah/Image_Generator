@@ -11,7 +11,6 @@ import {
   deleteImage,
   enhancePrompt,
   fetchAuthStatus,
-  fetchSimilarPrompts,
   fetchStats,
   generateImage,
   getImage,
@@ -28,7 +27,6 @@ import type {
   ImageListResponse,
   ImageRecord,
   ListImagesParams,
-  SimilarPromptsResponse,
   StatsResponse,
   TagListResponse,
 } from '../types/api';
@@ -48,9 +46,6 @@ export const queryKeys = {
   },
   stats: {
     all: ['stats'] as const,
-  },
-  similar: {
-    forQuery: (q: string) => ['similar', q] as const,
   },
   auth: {
     status: ['auth', 'status'] as const,
@@ -166,18 +161,6 @@ export function useSetImageTags(): UseMutationResult<
       qc.invalidateQueries({ queryKey: queryKeys.images.all });
       qc.invalidateQueries({ queryKey: queryKeys.tags.all });
     },
-  });
-}
-
-// ---------- Similar prompts ----------
-
-export function useSimilarPrompts(q: string): UseQueryResult<SimilarPromptsResponse, Error> {
-  return useQuery({
-    queryKey: queryKeys.similar.forQuery(q),
-    queryFn: () => fetchSimilarPrompts(q),
-    enabled: q.trim().length >= 4, // don't spam the API on every keystroke
-    staleTime: 60_000,
-    placeholderData: keepPreviousData,
   });
 }
 
