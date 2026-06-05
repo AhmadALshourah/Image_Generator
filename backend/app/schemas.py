@@ -139,6 +139,11 @@ class StatsResponse(BaseModel):
 
 # ---- Auth (#14) -----------------------------------------------------------
 
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    password: str = Field(..., min_length=6)
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -154,6 +159,7 @@ class AuthStatusResponse(BaseModel):
     auth_enabled: bool
     is_authenticated: bool
     username: str | None = None
+    needs_setup: bool = False  # True when no user account exists yet
 
 
 # ---- Misc -----------------------------------------------------------------

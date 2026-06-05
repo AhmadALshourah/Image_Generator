@@ -140,15 +140,15 @@ export default function Header({ theme, onToggleTheme }: HeaderProps) {
         </nav>
 
         {/* Right controls */}
-        <div className="flex items-center gap-1.5 ms-auto">
-          {/* Language toggle */}
+        <div className="flex items-center gap-0.5 sm:gap-1.5 ms-auto">
+          {/* Language toggle — icon-only on very small screens */}
           <button
             onClick={() => setLang(lang === 'en' ? 'ar' : 'en')}
             aria-label="Toggle language"
-            className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
+            className="inline-flex items-center gap-1.5 h-10 px-2 sm:px-3 rounded-xl text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus:outline-none"
           >
             <IconGlobe size={17} />
-            <span>{t('switchToAr')}</span>
+            <span className="hidden min-[360px]:inline">{t('switchToAr')}</span>
           </button>
 
           <LoginButton />

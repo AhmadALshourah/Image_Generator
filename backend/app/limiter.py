@@ -40,7 +40,7 @@ def _get_client_ip(request: Request) -> str:
 # is effectively a no-op.
 # ---------------------------------------------------------------------------
 
-def generate_rate_limit(request: Request) -> str:  # noqa: ARG001
+def generate_rate_limit() -> str:
     from app.config import get_settings
 
     settings = get_settings()

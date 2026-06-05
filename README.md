@@ -194,11 +194,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Still inside `backend/`, copy the env template and set your key:
+Copy the backend env template and set your key (run these from the **repo root**):
 
 ```bash
-copy .env.example .env              # Windows PowerShell (run from backend/)
-# cp .env.example .env              # macOS/Linux      (run from backend/)
+# macOS / Linux
+cp backend/.env.example backend/.env
+
+# Windows PowerShell
+copy backend\.env.example backend\.env
 ```
 
 Open `backend/.env` and set your `OPENAI_API_KEY`.

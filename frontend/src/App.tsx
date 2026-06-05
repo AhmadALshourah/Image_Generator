@@ -5,6 +5,7 @@ import Header from './components/Header';
 import HomePage from './pages/HomePage';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageFallback from './components/PageFallback';
+import AuthGate from './components/AuthGate';
 import { useTheme } from './hooks/useTheme';
 import { ToastProvider } from './context/ToastContext';
 import { AuthProvider } from './context/AuthContext';
@@ -45,7 +46,9 @@ export default function App() {
       <LangProvider>
         <AuthProvider>
           <ToastProvider>
-            <AppShell />
+            <AuthGate>
+              <AppShell />
+            </AuthGate>
           </ToastProvider>
         </AuthProvider>
       </LangProvider>

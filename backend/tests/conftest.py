@@ -70,12 +70,41 @@ def _make_default_mock_openai() -> MagicMock:
     """Build a MagicMock that mimics the parts of AsyncOpenAI we actually use."""
     fake = MagicMock(name="AsyncOpenAI")
 
-    # images.generate → returns a single base64-encoded PNG
+    # images.generate supports both the classic (non-stream) and streaming call.
+    #
+    # Non-stream: returns an object with .data[0].b64_json
+    # Stream (stream=True, partial_images=3): returns an async iterable that
+    #   yields partial_image events then a completed event.
     image_data = MagicMock()
     image_data.b64_json = TINY_PNG_B64
     image_response = MagicMock()
     image_response.data = [image_data]
-    fake.images.generate = AsyncMock(return_value=image_response)
+
+    def _make_partial(index: int) -> MagicMock:
+        ev = MagicMock()
+        ev.type = "image_generation.partial_image"
+        ev.b64_json = TINY_PNG_B64
+        ev.partial_image_index = index
+        return ev
+
+    def _make_completed() -> MagicMock:
+        ev = MagicMock()
+        ev.type = "image_generation.completed"
+        ev.b64_json = TINY_PNG_B64
+        return ev
+
+    async def _images_generate_stream():
+        for i in range(3):
+            yield _make_partial(i)
+        yield _make_completed()
+
+    async def _images_generate_side_effect(*args, **kwargs):
+        if kwargs.get("stream"):
+            return _images_generate_stream()
+        return image_response
+
+    # Use AsyncMock so tests can assert .await_count / .call_args etc.
+    fake.images.generate = AsyncMock(side_effect=_images_generate_side_effect)
 
     # moderations.create → not flagged by default
     mod_categories = MagicMock()

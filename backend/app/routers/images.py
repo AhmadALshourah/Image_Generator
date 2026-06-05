@@ -58,21 +58,21 @@ class _ResolvedPrompt:
     was_translated: bool
 
 
-async def _moderate_and_translate(request: GenerateRequest) -> _ResolvedPrompt:
-    await moderation_service.assert_prompt_allowed(request.prompt)
+async def _moderate_and_translate(body: GenerateRequest) -> _ResolvedPrompt:
+    await moderation_service.assert_prompt_allowed(body.prompt)
 
-    if not prompt_service.looks_arabic(request.prompt):
-        return _ResolvedPrompt(effective_prompt=request.prompt, was_translated=False)
+    if not prompt_service.looks_arabic(body.prompt):
+        return _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
 
-    translated = await prompt_service.translate_to_english(request.prompt)
-    if translated and translated.strip() != request.prompt.strip():
+    translated = await prompt_service.translate_to_english(body.prompt)
+    if translated and translated.strip() != body.prompt.strip():
         return _ResolvedPrompt(effective_prompt=translated, was_translated=True)
-    return _ResolvedPrompt(effective_prompt=request.prompt, was_translated=False)
+    return _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
 
 
 async def _persist(
     *,
-    request: GenerateRequest,
+    body: GenerateRequest,
     resolved: _ResolvedPrompt,
     image_bytes: bytes,
     output_format: str,
@@ -83,30 +83,30 @@ async def _persist(
         image_bytes=image_bytes,
         output_format=output_format,
         metadata={
-            "prompt": request.prompt,
+            "prompt": body.prompt,
             "effective_prompt": resolved.effective_prompt,
             "was_translated": str(resolved.was_translated).lower(),
-            "size": request.size,
-            "quality": request.quality,
-            "background": request.background,
+            "size": body.size,
+            "quality": body.quality,
+            "background": body.background,
             "model": "gpt-image-1",
         },
     )
 
-    # Embedding for "similar prompts" (#17) — best-effort, never blocks the response.
+    # Embedding for "similar prompts" — best-effort, never blocks the response.
     vector = await embedding_service.embed_text(resolved.effective_prompt)
     embedding_blob = embedding_service.pack_vector(vector) if vector else None
 
-    cost = cost_service.estimate_image_cost_usd(quality=request.quality, size=request.size)
+    cost = cost_service.estimate_image_cost_usd(quality=body.quality, size=body.size)
 
     image = Image(
         uuid=image_uuid,
-        prompt=request.prompt,
+        prompt=body.prompt,
         effective_prompt=resolved.effective_prompt,
         was_translated=resolved.was_translated,
-        size=request.size,
-        quality=request.quality,
-        background=request.background,
+        size=body.size,
+        quality=body.quality,
+        background=body.background,
         output_format=output_format,
         prompt_hash=prompt_hash,
         filename=filename,
@@ -140,35 +140,35 @@ async def health() -> HealthResponse:
 @router.post("/generate", response_model=ImageRecord, status_code=status.HTTP_201_CREATED)
 @limiter.limit(generate_rate_limit)
 async def generate(
-    http_request: Request,
-    request: GenerateRequest,
+    request: Request,           # named 'request' — required by slowapi for rate-limit key extraction
+    body: GenerateRequest,
     repo: ImageRepository = Depends(get_image_repository),
     _: str = Depends(auth_service.require_owner),
 ) -> ImageRecord:
-    resolved = await _moderate_and_translate(request)
+    resolved = await _moderate_and_translate(body)
 
     prompt_hash = cache_service.compute_prompt_hash(
         effective_prompt=resolved.effective_prompt,
-        size=request.size,
-        quality=request.quality,
-        background=request.background,
-        output_format=request.output_format,
+        size=body.size,
+        quality=body.quality,
+        background=body.background,
+        output_format=body.output_format,
     )
 
-    if not request.force:
+    if not body.force:
         cached = await repo.find_by_prompt_hash(prompt_hash)
         if cached is not None:
             return ImageRecord.from_orm_with_urls(cached, cached=True)
 
     result = await gpt_image_service.generate_image(
-        request, effective_prompt=resolved.effective_prompt
+        body, effective_prompt=resolved.effective_prompt
     )
 
     # Second-pass output moderation (opt-in via OUTPUT_MODERATION_ENABLED=true).
     await moderation_service.moderate_image_output(result.image_bytes, result.output_format)
 
     image = await _persist(
-        request=request,
+        body=body,
         resolved=resolved,
         image_bytes=result.image_bytes,
         output_format=result.output_format,
@@ -181,8 +181,8 @@ async def generate(
 @router.post("/generate/stream")
 @limiter.limit(generate_rate_limit)
 async def generate_stream(
-    http_request: Request,
-    request: GenerateRequest,
+    request: Request,           # named 'request' — required by slowapi for rate-limit key extraction
+    body: GenerateRequest,
     repo: ImageRepository = Depends(get_image_repository),
     _: str = Depends(auth_service.require_owner),
 ):
@@ -190,15 +190,15 @@ async def generate_stream(
         try:
             yield {"event": "stage", "data": json.dumps({"stage": "moderating"})}
             try:
-                await moderation_service.assert_prompt_allowed(request.prompt)
+                await moderation_service.assert_prompt_allowed(body.prompt)
             except HTTPException as exc:
                 yield {"event": "error", "data": json.dumps({"detail": str(exc.detail)})}
                 return
 
-            if prompt_service.looks_arabic(request.prompt):
+            if prompt_service.looks_arabic(body.prompt):
                 yield {"event": "stage", "data": json.dumps({"stage": "translating"})}
-                translated = await prompt_service.translate_to_english(request.prompt)
-                if translated and translated.strip() != request.prompt.strip():
+                translated = await prompt_service.translate_to_english(body.prompt)
+                if translated and translated.strip() != body.prompt.strip():
                     resolved = _ResolvedPrompt(effective_prompt=translated, was_translated=True)
                     yield {
                         "event": "stage",
@@ -208,20 +208,20 @@ async def generate_stream(
                     }
                 else:
                     resolved = _ResolvedPrompt(
-                        effective_prompt=request.prompt, was_translated=False
+                        effective_prompt=body.prompt, was_translated=False
                     )
             else:
-                resolved = _ResolvedPrompt(effective_prompt=request.prompt, was_translated=False)
+                resolved = _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
 
             prompt_hash = cache_service.compute_prompt_hash(
                 effective_prompt=resolved.effective_prompt,
-                size=request.size,
-                quality=request.quality,
-                background=request.background,
-                output_format=request.output_format,
+                size=body.size,
+                quality=body.quality,
+                background=body.background,
+                output_format=body.output_format,
             )
 
-            if not request.force:
+            if not body.force:
                 yield {"event": "stage", "data": json.dumps({"stage": "cache_check"})}
                 cached = await repo.find_by_prompt_hash(prompt_hash)
                 if cached is not None:
@@ -232,10 +232,10 @@ async def generate_stream(
             yield {"event": "stage", "data": json.dumps({"stage": "generating"})}
 
             final_bytes: bytes | None = None
-            final_format = request.output_format
+            final_format = body.output_format
             try:
                 async for piece in gpt_image_service.stream_generate_image(
-                    request, effective_prompt=resolved.effective_prompt
+                    body, effective_prompt=resolved.effective_prompt
                 ):
                     if isinstance(piece, StreamPartial):
                         yield {
@@ -268,7 +268,7 @@ async def generate_stream(
             yield {"event": "stage", "data": json.dumps({"stage": "saving"})}
             try:
                 image = await _persist(
-                    request=request,
+                    body=body,
                     resolved=resolved,
                     image_bytes=final_bytes,
                     output_format=final_format,

@@ -121,6 +121,11 @@ export interface StatsResponse {
   by_day: CostByDay[];
 }
 
+export interface RegisterRequest {
+  username: string;
+  password: string;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;
@@ -136,6 +141,7 @@ export interface AuthStatusResponse {
   auth_enabled: boolean;
   is_authenticated: boolean;
   username: string | null;
+  needs_setup: boolean;
 }
 
 export interface DeleteResponse {

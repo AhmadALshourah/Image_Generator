@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 
-import numpy as np
-
 from app.repositories import ImageRepository, get_image_repository
 from app.schemas import SimilarPromptResult, SimilarPromptsResponse
 from app.services import embedding_service
@@ -28,22 +26,15 @@ async def similar_prompts(
     if query_vec is None:
         return SimilarPromptsResponse(query=q, items=[])
 
-    qv = np.asarray(query_vec, dtype="float32")
-    qn = float(np.linalg.norm(qv))
-    if qn == 0.0:
-        return SimilarPromptsResponse(query=q, items=[])
-
     candidates = await images.all_with_embeddings()
     scored: list[tuple[float, object]] = []
     for img in candidates:
         if not img.embedding:
             continue
         v = embedding_service.unpack_vector(img.embedding)
-        nv = float(np.linalg.norm(v))
-        if nv == 0.0:
-            continue
-        score = float(np.dot(qv, v) / (qn * nv))
-        scored.append((score, img))
+        score = embedding_service.cosine_similarity(query_vec, v)
+        if score > 0.0:
+            scored.append((score, img))
 
     scored.sort(key=lambda pair: pair[0], reverse=True)
     top = scored[:top_k]

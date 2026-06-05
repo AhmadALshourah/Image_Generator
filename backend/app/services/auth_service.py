@@ -1,12 +1,11 @@
 """Owner-mode JWT auth (#14).
 
-Single-user model: there's exactly one owner, configured via
-`OWNER_USERNAME` + `OWNER_PASSWORD`. When `AUTH_ENABLED=false` (default),
-no auth is required and write endpoints are open — fine for local dev / demos.
+DB-based single-user model: one owner account stored in the `users` table.
+Registration is open only when no account exists yet (first-time setup).
+After that, login checks the DB and issues a JWT.
 
-When enabled, write endpoints (POST /api/generate, DELETE /api/images/{id},
-POST /api/images/{id}/tags) require a Bearer JWT obtained from `/api/auth/login`.
-Reads stay public so the gallery can be shared.
+When `AUTH_ENABLED=false`, write endpoints are open (anonymous) — still useful
+for local dev/demos without any login prompt.
 """
 from __future__ import annotations
 
@@ -17,8 +16,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
+from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -28,34 +30,47 @@ _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _bearer = HTTPBearer(auto_error=False)
 
 
-def verify_password(plain: str, expected: str) -> bool:
-    """Verify `plain` against `expected`.
+# ---- Password helpers -------------------------------------------------------
 
-    Convention: if `expected` looks like a bcrypt hash (`$2b$…`) we use bcrypt;
-    otherwise we fall back to constant-time string compare (so you can set a
-    plain password in dev without bcrypt-hashing it first).
-    """
-    if not expected:
+def hash_password(plain: str) -> str:
+    return _pwd_context.hash(plain)
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    if not hashed:
         return False
-    if expected.startswith("$2"):
-        try:
-            return _pwd_context.verify(plain, expected)
-        except Exception:  # noqa: BLE001
-            return False
-    return _constant_time_eq(plain, expected)
-
-
-def _constant_time_eq(a: str, b: str) -> bool:
-    if len(a) != len(b):
+    try:
+        return _pwd_context.verify(plain, hashed)
+    except Exception:  # noqa: BLE001
         return False
-    diff = 0
-    for x, y in zip(a, b):
-        diff |= ord(x) ^ ord(y)
-    return diff == 0
 
+
+# ---- DB helpers -------------------------------------------------------------
+
+async def get_user(db: AsyncSession, username: str):
+    from app.models import User
+    result = await db.execute(select(User).where(User.username == username))
+    return result.scalar_one_or_none()
+
+
+async def user_exists(db: AsyncSession) -> bool:
+    from app.models import User
+    result = await db.execute(select(func.count()).select_from(User))
+    return (result.scalar() or 0) > 0
+
+
+async def create_user(db: AsyncSession, username: str, plain_password: str):
+    from app.models import User
+    user = User(username=username, hashed_password=hash_password(plain_password))
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+# ---- Token helpers ----------------------------------------------------------
 
 def issue_token(settings: Settings, *, subject: str) -> tuple[str, int]:
-    """Sign a JWT and return (token, expires_in_seconds)."""
     ttl = timedelta(hours=settings.jwt_ttl_hours)
     now = datetime.now(timezone.utc)
     payload = {"sub": subject, "iat": now, "exp": now + ttl}
@@ -64,7 +79,6 @@ def issue_token(settings: Settings, *, subject: str) -> tuple[str, int]:
 
 
 def decode_token(settings: Settings, token: str) -> str:
-    """Return the subject claim, or raise HTTP 401."""
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
     except JWTError as exc:
@@ -83,27 +97,22 @@ def decode_token(settings: Settings, token: str) -> str:
     return sub
 
 
-# ---- FastAPI dependencies -----------------------------------------------
+# ---- FastAPI dependencies ---------------------------------------------------
 
 def current_user_optional(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     settings: Settings = Depends(get_settings),
 ) -> str | None:
-    """Return the authenticated username, or None if no Bearer present."""
     if credentials is None:
         return None
     return decode_token(settings, credentials.credentials)
 
 
-def require_owner(
+async def require_owner(
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db),
 ) -> str:
-    """Block the request unless a valid owner JWT is present.
-
-    When AUTH_ENABLED=false this dependency is a no-op (returns "anonymous"),
-    so the same router code works in both modes.
-    """
     if not settings.auth_enabled:
         return "anonymous"
 
@@ -115,9 +124,10 @@ def require_owner(
         )
 
     subject = decode_token(settings, credentials.credentials)
-    if subject != settings.owner_username:
+    user = await get_user(db, subject)
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the owner can perform this action",
+            detail="User not found",
         )
     return subject

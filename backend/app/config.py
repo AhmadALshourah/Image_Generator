@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     s3_public_base_url: str = ""         # e.g. https://cdn.example.com/
 
     # ---- Auth (#14) ------------------------------------------------------
-    auth_enabled: bool = False
+    auth_enabled: bool = True
     owner_username: str = "owner"
     owner_password: str = ""             # bcrypt-hashed if set; plain checked once if not
     jwt_secret: str = "change-me-in-prod"

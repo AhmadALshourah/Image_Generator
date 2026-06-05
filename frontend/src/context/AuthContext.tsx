@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-import { getStoredToken, login as loginApi, setStoredToken } from '../api/client';
+import { getStoredToken, login as loginApi, register as registerApi, setStoredToken } from '../api/client';
 import { useAuthStatus } from '../api/queries';
 
 interface AuthState {
@@ -9,10 +9,12 @@ interface AuthState {
   isAuthenticated: boolean;
   username: string | null;
   isLoading: boolean;
+  needsSetup: boolean;
 }
 
 interface AuthApi extends AuthState {
   login: (username: string, password: string) => Promise<void>;
+  register: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -23,7 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const statusQuery = useAuthStatus();
   const [hasToken, setHasToken] = useState<boolean>(() => getStoredToken() !== null);
 
-  // Track localStorage changes (e.g. logout in another tab).
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'image-gen-token') setHasToken(e.newValue !== null);
@@ -42,6 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [qc]
   );
 
+  const doRegister = useCallback(
+    async (username: string, password: string) => {
+      const { access_token } = await registerApi({ username, password });
+      setStoredToken(access_token);
+      setHasToken(true);
+      await qc.invalidateQueries({ queryKey: ['auth', 'status'] });
+    },
+    [qc]
+  );
+
   const doLogout = useCallback(() => {
     setStoredToken(null);
     setHasToken(false);
@@ -51,11 +62,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const status = statusQuery.data;
 
   const value: AuthApi = {
-    authEnabled: status?.auth_enabled ?? false,
+    authEnabled: status?.auth_enabled ?? true,
     isAuthenticated: (status?.is_authenticated ?? false) || hasToken,
     username: status?.username ?? null,
     isLoading: statusQuery.isLoading,
+    needsSetup: status?.needs_setup ?? false,
     login: doLogin,
+    register: doRegister,
     logout: doLogout,
   };
 

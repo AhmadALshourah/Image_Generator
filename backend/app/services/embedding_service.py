@@ -13,32 +13,38 @@ nice-to-have. A failed embedding never blocks an image from being saved.
 from __future__ import annotations
 
 import logging
-
-import numpy as np
+import math
+import struct
 
 from app.config import get_settings
 from app.services.openai_client import get_openai_client
 
 logger = logging.getLogger(__name__)
 
-# Each float32 = 4 bytes. text-embedding-3-small returns 1536-dim vectors.
-_FLOAT32_DTYPE = np.dtype("<f4")
+# Each float32 = 4 bytes (little-endian). text-embedding-3-small: 1536 dims.
+_FLOAT32_FMT = "<f"
+_FLOAT32_SIZE = struct.calcsize(_FLOAT32_FMT)
 
 
 def pack_vector(vector: list[float]) -> bytes:
-    return np.asarray(vector, dtype=_FLOAT32_DTYPE).tobytes()
+    """Serialize a float list to raw little-endian float32 bytes."""
+    return struct.pack(f"<{len(vector)}f", *vector)
 
 
-def unpack_vector(blob: bytes) -> np.ndarray:
-    return np.frombuffer(blob, dtype=_FLOAT32_DTYPE)
+def unpack_vector(blob: bytes) -> list[float]:
+    """Deserialize raw little-endian float32 bytes to a float list."""
+    n = len(blob) // _FLOAT32_SIZE
+    return list(struct.unpack(f"<{n}f", blob))
 
 
-def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-    na = float(np.linalg.norm(a))
-    nb = float(np.linalg.norm(b))
-    if na == 0.0 or nb == 0.0:
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Pure-Python cosine similarity — no numpy required."""
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = math.sqrt(sum(x * x for x in a))
+    norm_b = math.sqrt(sum(y * y for y in b))
+    if norm_a == 0.0 or norm_b == 0.0:
         return 0.0
-    return float(np.dot(a, b) / (na * nb))
+    return dot / (norm_a * norm_b)
 
 
 async def embed_text(text: str) -> list[float] | None:

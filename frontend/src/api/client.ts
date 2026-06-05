@@ -11,6 +11,7 @@ import type {
   ListImagesParams,
   LoginRequest,
   LoginResponse,
+  RegisterRequest,
   SimilarPromptsResponse,
   StatsResponse,
   TagListResponse,
@@ -109,6 +110,11 @@ export async function fetchStats(): Promise<StatsResponse> {
 }
 
 // ---- Auth (#14) ----------------------------------------------------------
+
+export async function register(payload: RegisterRequest): Promise<LoginResponse> {
+  const { data } = await apiClient.post<LoginResponse>('/auth/register', payload);
+  return data;
+}
 
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const { data } = await apiClient.post<LoginResponse>('/auth/login', payload);

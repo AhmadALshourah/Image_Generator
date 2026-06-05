@@ -131,6 +131,16 @@ export const TR: Record<string, Record<Lang, string>> = {
   passwordLabel:   { en: 'Password',                          ar: 'كلمة المرور' },
   cancelLabel:     { en: 'Cancel',                            ar: 'إلغاء' },
   signingIn:       { en: 'Signing in…',                       ar: 'جارٍ الدخول…' },
+  // ── setup / register ──────────────────────────────────────────────────────
+  setupTitle:      { en: 'Create your account',               ar: 'إنشاء حسابك' },
+  setupSub:        { en: 'No account exists yet. Set a username and password to get started.', ar: 'لا يوجد حساب حتى الآن. أدخل اسم مستخدم وكلمة مرور للبدء.' },
+  loginTitle:      { en: 'Welcome back',                      ar: 'مرحباً بعودتك' },
+  loginSub:        { en: 'Sign in to access the image generator.',  ar: 'سجّل دخولك للوصول إلى مولّد الصور.' },
+  createAccount:   { en: 'Create Account',                    ar: 'إنشاء حساب' },
+  creating:        { en: 'Creating…',                         ar: 'جارٍ الإنشاء…' },
+  passwordMinHint: { en: 'Minimum 6 characters',              ar: 'الحد الأدنى ٦ أحرف' },
+  toastAccCreated: { en: 'Account created — you\'re signed in!', ar: 'تم إنشاء الحساب — أنت مسجّل الدخول!' },
+  toastRegFail:    { en: 'Could not create account',          ar: 'تعذّر إنشاء الحساب' },
 
   // ── error / loading ───────────────────────────────────────────────────────
   somethingWrong:  { en: 'Something went wrong',              ar: 'حدث خطأ ما' },
