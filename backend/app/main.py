@@ -22,6 +22,19 @@ async def lifespan(_app: FastAPI):
     logger = logging.getLogger("app.lifespan")
     await init_db()
     IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Log DB state on startup so it's easy to confirm data is persisted.
+    from sqlalchemy import func, select
+    from app.database import AsyncSessionLocal, DB_PATH
+    from app.models import Image, User
+    async with AsyncSessionLocal() as db:
+        users  = await db.scalar(select(func.count()).select_from(User))
+        images = await db.scalar(select(func.count()).select_from(Image))
+    logger.info(
+        "database ready",
+        extra={"users": users, "images": images, "db": str(DB_PATH)},
+    )
+
     logger.info("application started", extra={"model": "gpt-image-1"})
     yield
     logger.info("application shutting down")
@@ -33,9 +46,9 @@ def create_app() -> FastAPI:
     configure_sentry(settings)
 
     app = FastAPI(
-        title="AI Image Generator API",
+        title="Artifex API",
         description=(
-            "FastAPI backend that generates images via OpenAI gpt-image-1, "
+            "FastAPI backend powering Artifex — generates images via OpenAI gpt-image-1, "
             "stores them locally or in S3, and exposes a gallery with tags, "
             "cost tracking, and embedding-based similar-prompts search."
         ),

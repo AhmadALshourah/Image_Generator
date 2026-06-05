@@ -2,7 +2,7 @@ export type Lang = 'en' | 'ar';
 
 export const TR: Record<string, Record<Lang, string>> = {
   // ── header / nav ──────────────────────────────────────────────────────────
-  brand:           { en: 'AI Image Generator',                ar: 'مولّد الصور بالذكاء الاصطناعي' },
+  brand:           { en: 'Artifex',                           ar: 'Artifex' },
   tagline:         { en: 'Powered by gpt-image-1',            ar: 'مدعوم بـ gpt-image-1' },
   create:          { en: 'Create',                            ar: 'إنشاء' },
   gallery:         { en: 'Gallery',                           ar: 'المعرض' },
@@ -135,12 +135,14 @@ export const TR: Record<string, Record<Lang, string>> = {
   setupTitle:      { en: 'Create your account',               ar: 'إنشاء حسابك' },
   setupSub:        { en: 'No account exists yet. Set a username and password to get started.', ar: 'لا يوجد حساب حتى الآن. أدخل اسم مستخدم وكلمة مرور للبدء.' },
   loginTitle:      { en: 'Welcome back',                      ar: 'مرحباً بعودتك' },
-  loginSub:        { en: 'Sign in to access the image generator.',  ar: 'سجّل دخولك للوصول إلى مولّد الصور.' },
+  loginSub:        { en: 'Sign in to access Artifex.',              ar: 'سجّل دخولك للوصول إلى Artifex.' },
   createAccount:   { en: 'Create Account',                    ar: 'إنشاء حساب' },
   creating:        { en: 'Creating…',                         ar: 'جارٍ الإنشاء…' },
   passwordMinHint: { en: 'Minimum 6 characters',              ar: 'الحد الأدنى ٦ أحرف' },
   toastAccCreated: { en: 'Account created — you\'re signed in!', ar: 'تم إنشاء الحساب — أنت مسجّل الدخول!' },
   toastRegFail:    { en: 'Could not create account',          ar: 'تعذّر إنشاء الحساب' },
+  noAccountYet:    { en: "Don't have an account?",            ar: 'ليس لديك حساب؟' },
+  haveAccount:     { en: 'Already have an account?',          ar: 'لديك حساب بالفعل؟' },
 
   // ── error / loading ───────────────────────────────────────────────────────
   somethingWrong:  { en: 'Something went wrong',              ar: 'حدث خطأ ما' },

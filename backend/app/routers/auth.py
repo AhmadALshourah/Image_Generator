@@ -57,6 +57,13 @@ async def status_endpoint(
     current: str | None = Depends(auth_service.current_user_optional),
 ) -> AuthStatusResponse:
     has_user = await auth_service.user_exists(db)
+
+    # Token is valid but the user was deleted from DB → treat as unauthenticated.
+    if current is not None:
+        user = await auth_service.get_user(db, current)
+        if user is None:
+            current = None
+
     return AuthStatusResponse(
         auth_enabled=settings.auth_enabled,
         is_authenticated=current is not None,

@@ -19,8 +19,8 @@ export default defineConfig({
         'maskable-icon-512x512.png',
       ],
       manifest: {
-        name: 'AI Image Generator',
-        short_name: 'ImageGen',
+        name: 'Artifex',
+        short_name: 'Artifex',
         description: 'Generate, gallery, and curate AI images via gpt-image-1.',
         theme_color: '#6366f1',
         background_color: '#0f172a',
