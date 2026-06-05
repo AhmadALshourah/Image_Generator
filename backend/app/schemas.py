@@ -48,6 +48,9 @@ class ImageRecord(BaseModel):
     image_url: str = ""
     thumbnail_url: str = ""
     cached: bool = False
+    # Gallery / Library ownership fields
+    is_gallery: bool = False
+    owner_id: int | None = None
 
     @classmethod
     def from_orm_with_urls(
@@ -159,7 +162,8 @@ class AuthStatusResponse(BaseModel):
     auth_enabled: bool
     is_authenticated: bool
     username: str | None = None
-    needs_setup: bool = False  # True when no user account exists yet
+    needs_setup: bool = False
+    role: str = "user"  # 'admin' | 'user'
 
 
 # ---- Misc -----------------------------------------------------------------

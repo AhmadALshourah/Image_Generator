@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import { useDeleteImage, useGenerateImage, useImagesQuery } from '../api/queries';
-import { useAuth } from '../context/AuthContext';
+import { useDeleteImage, useGenerateImage, useLibraryQuery } from '../api/queries';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useToast } from '../context/ToastContext';
 import { useLang } from '../context/LangContext';
@@ -24,18 +23,17 @@ interface ApiErrorShape {
   message?: string;
 }
 
-function extractErrorMessage(err: unknown): string {
+function extractError(err: unknown): string {
   const e = err as ApiErrorShape;
   if (e?.response?.data?.detail) {
-    const detail = e.response.data.detail;
-    if (typeof detail === 'string') return detail;
-    if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg as string;
+    const d = e.response.data.detail;
+    if (typeof d === 'string') return d;
+    if (Array.isArray(d) && d[0]?.msg) return d[0].msg as string;
   }
-  if (e?.message) return e.message;
-  return 'Unexpected error. Please try again.';
+  return (err as ApiErrorShape)?.message ?? 'Unexpected error.';
 }
 
-function EmptyGallery({ hasFilters }: { hasFilters: boolean }) {
+function EmptyLibrary({ hasFilters }: { hasFilters: boolean }) {
   const { t } = useLang();
   return (
     <div className="anim-fadeUp text-center py-20">
@@ -44,16 +42,16 @@ function EmptyGallery({ hasFilters }: { hasFilters: boolean }) {
           stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"
           className="h-8 w-8">
           {hasFilters
-            ? <><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></>
-            : <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" /></>
+            ? <><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>
+            : <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>
           }
         </svg>
       </div>
       <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
-        {hasFilters ? t('noMatch') : t('noImages')}
+        {hasFilters ? t('noMatch') : t('libraryEmpty')}
       </p>
       <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-        {hasFilters ? t('noMatchSub') : t('noImagesSub')}
+        {hasFilters ? t('noMatchSub') : t('libraryEmptySub')}
       </p>
       {!hasFilters && (
         <Link to="/" className="mt-4 inline-flex">
@@ -64,10 +62,9 @@ function EmptyGallery({ hasFilters }: { hasFilters: boolean }) {
   );
 }
 
-export default function GalleryPage() {
+export default function LibraryPage() {
   const toast = useToast();
   const { t } = useLang();
-  const { isAdmin } = useAuth();
 
   const [filters, setFilters] = useState<GalleryFilters>(EMPTY_FILTERS);
   const [offset, setOffset] = useState(0);
@@ -87,7 +84,7 @@ export default function GalleryPage() {
     [debouncedQ, filters.size, filters.quality, filters.background, filters.tag, offset]
   );
 
-  const { data, isLoading, isFetching, error } = useImagesQuery(queryParams);
+  const { data, isLoading, isFetching, error } = useLibraryQuery(queryParams);
   const deleteMutation = useDeleteImage();
   const generateMutation = useGenerateImage();
 
@@ -112,7 +109,7 @@ export default function GalleryPage() {
         const lastValidOffset = Math.max(0, Math.floor(Math.max(0, newTotal - 1) / PAGE_SIZE) * PAGE_SIZE);
         if (offset > lastValidOffset) setOffset(lastValidOffset);
       },
-      onError: (err) => toast.error(extractErrorMessage(err)),
+      onError: (err) => toast.error(extractError(err)),
     });
   };
 
@@ -129,24 +126,23 @@ export default function GalleryPage() {
       setSelected(newImage);
       toast.success(t('toastNewVar'));
     } catch (err) {
-      toast.error(extractErrorMessage(err));
+      toast.error(extractError(err));
     }
   };
 
   const isInitialLoad = isLoading && !data;
   const isBusy = isFetching && !isInitialLoad;
-
-  const galleryCountLabel = t('galleryCountFmt').replace('{n}', String(total));
+  const countLabel = t('libraryCount').replace('{n}', String(total));
 
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="flex items-end justify-between gap-4 mb-5 anim-fadeUp">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-            {t('gallery')}
+            {t('library')}
           </h1>
           <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
-            {total > 0 ? galleryCountLabel : t('gallerySubAll')}
+            {total > 0 ? countLabel : t('librarySub')}
           </p>
         </div>
         <Link to="/">
@@ -154,7 +150,7 @@ export default function GalleryPage() {
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
               className="h-[18px] w-[18px]">
-              <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
             {t('newImage')}
           </span>
@@ -164,8 +160,8 @@ export default function GalleryPage() {
       <GallerySearch filters={filters} onChange={setFilters} disabled={isInitialLoad} resultCount={data?.total} />
 
       {isInitialLoad && <div className="card"><LoadingSpinner /></div>}
-      {!isInitialLoad && error && <ErrorMessage message={extractErrorMessage(error)} />}
-      {!isInitialLoad && !error && items.length === 0 && <EmptyGallery hasFilters={hasActiveFilter} />}
+      {!isInitialLoad && error && <ErrorMessage message={extractError(error)} />}
+      {!isInitialLoad && !error && items.length === 0 && <EmptyLibrary hasFilters={hasActiveFilter} />}
 
       {items.length > 0 && (
         <>
@@ -178,12 +174,12 @@ export default function GalleryPage() {
         </>
       )}
 
-      {/* Gallery images: only admin can delete/regenerate */}
+      {/* Library images: user can always delete/regenerate their own */}
       <ImageModal
         image={selected}
         onClose={() => setSelected(null)}
-        onDelete={isAdmin ? handleDelete : undefined}
-        onRegenerate={isAdmin ? handleRegenerate : undefined}
+        onDelete={handleDelete}
+        onRegenerate={handleRegenerate}
         deleting={deleteMutation.isPending && deleteMutation.variables === selected?.id}
         regenerating={generateMutation.isPending}
       />

@@ -12,7 +12,8 @@ import { AuthProvider } from './context/AuthContext';
 import { LangProvider, useLang } from './context/LangContext';
 
 const GalleryPage = lazy(() => import('./pages/GalleryPage'));
-const StatsPage = lazy(() => import('./pages/StatsPage'));
+const StatsPage   = lazy(() => import('./pages/StatsPage'));
+const LibraryPage = lazy(() => import('./pages/LibraryPage'));
 
 function AppShell() {
   const { theme, toggleTheme } = useTheme();
@@ -27,6 +28,7 @@ function AppShell() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/library" element={<LibraryPage />} />
             <Route path="/stats" element={<StatsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

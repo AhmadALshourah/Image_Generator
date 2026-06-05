@@ -1,14 +1,11 @@
 """Image generation, listing, retrieval, deletion.
 
-Two generate endpoints, sharing one pipeline:
+Two contexts:
+  Gallery  — public, curated by admin (Mordax). is_gallery=True.
+  Library  — private per-user. is_gallery=False, owner_id=user.id.
 
-  * `POST /api/generate`         — single response, returns the saved record.
-  * `POST /api/generate/stream`  — Server-Sent Events: stage updates, partial
-                                    renders (3×), and a terminal `complete`
-                                    event with the saved ImageRecord.
-
-All DB access goes through `ImageRepository` (DI) — the routing layer is
-thin and SQLAlchemy-free.
+Generate → admin images go to Gallery; user images go to Library.
+Delete   → admin can delete anything; users can only delete their own Library images.
 """
 from __future__ import annotations
 
@@ -48,9 +45,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["images"])
 
 
-# ---------------------------------------------------------------------------
-# Shared pipeline helpers
-# ---------------------------------------------------------------------------
+# ── helpers ─────────────────────────────────────────────────────────────────
 
 @dataclass
 class _ResolvedPrompt:
@@ -60,14 +55,22 @@ class _ResolvedPrompt:
 
 async def _moderate_and_translate(body: GenerateRequest) -> _ResolvedPrompt:
     await moderation_service.assert_prompt_allowed(body.prompt)
-
     if not prompt_service.looks_arabic(body.prompt):
         return _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
-
     translated = await prompt_service.translate_to_english(body.prompt)
     if translated and translated.strip() != body.prompt.strip():
         return _ResolvedPrompt(effective_prompt=translated, was_translated=True)
     return _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
+
+
+async def _get_owner_info(username: str):
+    """Return (user_id, role) for the authenticated user."""
+    from app.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        user = await auth_service.get_user(db, username)
+        if user is None:
+            return None, "user"
+        return user.id, user.role
 
 
 async def _persist(
@@ -77,26 +80,28 @@ async def _persist(
     image_bytes: bytes,
     output_format: str,
     prompt_hash: str,
+    owner_id: int | None,
+    is_gallery: bool,
     repo: ImageRepository,
 ) -> Image:
-    image_uuid, filename, thumbnail_filename, file_size = await storage_service.save_image_with_thumbnail(
-        image_bytes=image_bytes,
-        output_format=output_format,
-        metadata={
-            "prompt": body.prompt,
-            "effective_prompt": resolved.effective_prompt,
-            "was_translated": str(resolved.was_translated).lower(),
-            "size": body.size,
-            "quality": body.quality,
-            "background": body.background,
-            "model": "gpt-image-1",
-        },
+    image_uuid, filename, thumbnail_filename, file_size = (
+        await storage_service.save_image_with_thumbnail(
+            image_bytes=image_bytes,
+            output_format=output_format,
+            metadata={
+                "prompt": body.prompt,
+                "effective_prompt": resolved.effective_prompt,
+                "was_translated": str(resolved.was_translated).lower(),
+                "size": body.size,
+                "quality": body.quality,
+                "background": body.background,
+                "model": "gpt-image-1",
+            },
+        )
     )
 
-    # Embedding for "similar prompts" — best-effort, never blocks the response.
     vector = await embedding_service.embed_text(resolved.effective_prompt)
     embedding_blob = embedding_service.pack_vector(vector) if vector else None
-
     cost = cost_service.estimate_image_cost_usd(quality=body.quality, size=body.size)
 
     image = Image(
@@ -114,6 +119,8 @@ async def _persist(
         file_size=file_size,
         cost_usd=cost,
         embedding=embedding_blob,
+        owner_id=owner_id,
+        is_gallery=is_gallery,
     )
 
     try:
@@ -128,9 +135,7 @@ async def _persist(
         )
 
 
-# ---------------------------------------------------------------------------
-# Routes
-# ---------------------------------------------------------------------------
+# ── routes ───────────────────────────────────────────────────────────────────
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
@@ -140,10 +145,10 @@ async def health() -> HealthResponse:
 @router.post("/generate", response_model=ImageRecord, status_code=status.HTTP_201_CREATED)
 @limiter.limit(generate_rate_limit)
 async def generate(
-    request: Request,           # named 'request' — required by slowapi for rate-limit key extraction
+    request: Request,
     body: GenerateRequest,
     repo: ImageRepository = Depends(get_image_repository),
-    _: str = Depends(auth_service.require_owner),
+    current_user: str = Depends(auth_service.require_owner),
 ) -> ImageRecord:
     resolved = await _moderate_and_translate(body)
 
@@ -160,19 +165,17 @@ async def generate(
         if cached is not None:
             return ImageRecord.from_orm_with_urls(cached, cached=True)
 
-    result = await gpt_image_service.generate_image(
-        body, effective_prompt=resolved.effective_prompt
-    )
-
-    # Second-pass output moderation (opt-in via OUTPUT_MODERATION_ENABLED=true).
+    result = await gpt_image_service.generate_image(body, effective_prompt=resolved.effective_prompt)
     await moderation_service.moderate_image_output(result.image_bytes, result.output_format)
 
+    owner_id, role = await _get_owner_info(current_user)
+    is_gallery = (role == "admin")
+
     image = await _persist(
-        body=body,
-        resolved=resolved,
-        image_bytes=result.image_bytes,
-        output_format=result.output_format,
+        body=body, resolved=resolved,
+        image_bytes=result.image_bytes, output_format=result.output_format,
         prompt_hash=prompt_hash,
+        owner_id=owner_id, is_gallery=is_gallery,
         repo=repo,
     )
     return ImageRecord.from_orm_with_urls(image, cached=False)
@@ -181,10 +184,10 @@ async def generate(
 @router.post("/generate/stream")
 @limiter.limit(generate_rate_limit)
 async def generate_stream(
-    request: Request,           # named 'request' — required by slowapi for rate-limit key extraction
+    request: Request,
     body: GenerateRequest,
     repo: ImageRepository = Depends(get_image_repository),
-    _: str = Depends(auth_service.require_owner),
+    current_user: str = Depends(auth_service.require_owner),
 ):
     async def event_generator() -> AsyncIterator[dict[str, Any]]:
         try:
@@ -200,25 +203,16 @@ async def generate_stream(
                 translated = await prompt_service.translate_to_english(body.prompt)
                 if translated and translated.strip() != body.prompt.strip():
                     resolved = _ResolvedPrompt(effective_prompt=translated, was_translated=True)
-                    yield {
-                        "event": "stage",
-                        "data": json.dumps(
-                            {"stage": "translated", "effective_prompt": translated}
-                        ),
-                    }
+                    yield {"event": "stage", "data": json.dumps({"stage": "translated", "effective_prompt": translated})}
                 else:
-                    resolved = _ResolvedPrompt(
-                        effective_prompt=body.prompt, was_translated=False
-                    )
+                    resolved = _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
             else:
                 resolved = _ResolvedPrompt(effective_prompt=body.prompt, was_translated=False)
 
             prompt_hash = cache_service.compute_prompt_hash(
                 effective_prompt=resolved.effective_prompt,
-                size=body.size,
-                quality=body.quality,
-                background=body.background,
-                output_format=body.output_format,
+                size=body.size, quality=body.quality,
+                background=body.background, output_format=body.output_format,
             )
 
             if not body.force:
@@ -238,12 +232,7 @@ async def generate_stream(
                     body, effective_prompt=resolved.effective_prompt
                 ):
                     if isinstance(piece, StreamPartial):
-                        yield {
-                            "event": "partial",
-                            "data": json.dumps(
-                                {"index": piece.index, "b64_json": piece.b64_json}
-                            ),
-                        }
+                        yield {"event": "partial", "data": json.dumps({"index": piece.index, "b64_json": piece.b64_json})}
                     elif isinstance(piece, StreamCompleted):
                         final_bytes = piece.image_bytes
                         final_format = piece.output_format
@@ -252,27 +241,25 @@ async def generate_stream(
                 return
 
             if final_bytes is None:
-                yield {
-                    "event": "error",
-                    "data": json.dumps({"detail": "No final image returned by provider"}),
-                }
+                yield {"event": "error", "data": json.dumps({"detail": "No final image returned by provider"})}
                 return
 
-            # Second-pass output moderation (opt-in via OUTPUT_MODERATION_ENABLED=true).
             try:
                 await moderation_service.moderate_image_output(final_bytes, final_format)
             except HTTPException as exc:
                 yield {"event": "error", "data": json.dumps({"detail": str(exc.detail)})}
                 return
 
+            owner_id, role = await _get_owner_info(current_user)
+            is_gallery = (role == "admin")
+
             yield {"event": "stage", "data": json.dumps({"stage": "saving"})}
             try:
                 image = await _persist(
-                    body=body,
-                    resolved=resolved,
-                    image_bytes=final_bytes,
-                    output_format=final_format,
+                    body=body, resolved=resolved,
+                    image_bytes=final_bytes, output_format=final_format,
                     prompt_hash=prompt_hash,
+                    owner_id=owner_id, is_gallery=is_gallery,
                     repo=repo,
                 )
             except HTTPException as exc:
@@ -289,8 +276,10 @@ async def generate_stream(
     return EventSourceResponse(event_generator())
 
 
+# ── Gallery (public, is_gallery=True) ────────────────────────────────────────
+
 @router.get("/images", response_model=ImageListResponse)
-async def list_images(
+async def list_gallery(
     limit: int = Query(default=12, ge=1, le=60),
     offset: int = Query(default=0, ge=0),
     q: str | None = Query(default=None, max_length=200),
@@ -301,21 +290,45 @@ async def list_images(
     repo: ImageRepository = Depends(get_image_repository),
 ) -> ImageListResponse:
     images, total = await repo.list_filtered(
-        limit=limit,
-        offset=offset,
-        q=q,
-        size=size,
-        quality=quality,
-        background=background,
-        tag=tag,
+        limit=limit, offset=offset,
+        q=q, size=size, quality=quality, background=background, tag=tag,
     )
     return ImageListResponse(
         items=[ImageRecord.from_orm_with_urls(img) for img in images],
-        total=total,
-        limit=limit,
-        offset=offset,
+        total=total, limit=limit, offset=offset,
     )
 
+
+# ── Library (private, per-user) ──────────────────────────────────────────────
+
+@router.get("/library", response_model=ImageListResponse)
+async def list_library(
+    limit: int = Query(default=12, ge=1, le=60),
+    offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=200),
+    size: str | None = Query(default=None),
+    quality: str | None = Query(default=None),
+    background: str | None = Query(default=None),
+    tag: str | None = Query(default=None, max_length=40),
+    repo: ImageRepository = Depends(get_image_repository),
+    current_user: str = Depends(auth_service.require_owner),
+) -> ImageListResponse:
+    owner_id, _role = await _get_owner_info(current_user)
+    if owner_id is None:
+        return ImageListResponse(items=[], total=0, limit=limit, offset=offset)
+
+    images, total = await repo.list_library(
+        owner_id=owner_id,
+        limit=limit, offset=offset,
+        q=q, size=size, quality=quality, background=background, tag=tag,
+    )
+    return ImageListResponse(
+        items=[ImageRecord.from_orm_with_urls(img) for img in images],
+        total=total, limit=limit, offset=offset,
+    )
+
+
+# ── Single image ─────────────────────────────────────────────────────────────
 
 @router.get("/images/{image_id}", response_model=ImageRecord)
 async def get_image(
@@ -332,11 +345,23 @@ async def get_image(
 async def delete_image(
     image_id: int,
     repo: ImageRepository = Depends(get_image_repository),
-    _: str = Depends(auth_service.require_owner),
+    current_user: str = Depends(auth_service.require_owner),
 ) -> DeleteResponse:
     image = await repo.get_by_id(image_id)
     if image is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Image not found")
+
+    owner_id, role = await _get_owner_info(current_user)
+
+    # Admin can delete anything; regular users can only delete their own library images.
+    is_admin = role == "admin"
+    owns_image = image.owner_id == owner_id and not image.is_gallery
+
+    if not is_admin and not owns_image:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own Library images.",
+        )
 
     filename = image.filename
     thumbnail_filename = image.thumbnail_filename

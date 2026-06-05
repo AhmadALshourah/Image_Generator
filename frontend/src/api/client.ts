@@ -116,6 +116,21 @@ export async function register(payload: RegisterRequest): Promise<LoginResponse>
   return data;
 }
 
+export async function listLibrary(params: ListImagesParams = {}): Promise<ImageListResponse> {
+  const queryParams: Record<string, string | number> = {
+    limit: params.limit ?? 12,
+    offset: params.offset ?? 0,
+  };
+  if (params.q) queryParams.q = params.q;
+  if (params.size) queryParams.size = params.size;
+  if (params.quality) queryParams.quality = params.quality;
+  if (params.background) queryParams.background = params.background;
+  if (params.tag) queryParams.tag = params.tag;
+
+  const { data } = await apiClient.get<ImageListResponse>('/library', { params: queryParams });
+  return data;
+}
+
 export async function login(payload: LoginRequest): Promise<LoginResponse> {
   const { data } = await apiClient.post<LoginResponse>('/auth/login', payload);
   return data;

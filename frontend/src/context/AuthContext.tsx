@@ -10,6 +10,7 @@ interface AuthState {
   username: string | null;
   isLoading: boolean;
   needsSetup: boolean;
+  isAdmin: boolean;
 }
 
 interface AuthApi extends AuthState {
@@ -67,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     username: status?.username ?? null,
     isLoading: statusQuery.isLoading,
     needsSetup: status?.needs_setup ?? false,
+    isAdmin: status?.role === 'admin',
     login: doLogin,
     register: doRegister,
     logout: doLogout,

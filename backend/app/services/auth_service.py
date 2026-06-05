@@ -64,9 +64,9 @@ async def user_exists(db: AsyncSession) -> bool:
     return (result.scalar() or 0) > 0
 
 
-async def create_user(db: AsyncSession, username: str, plain_password: str):
+async def create_user(db: AsyncSession, username: str, plain_password: str, role: str = "user"):
     from app.models import User
-    user = User(username=username, hashed_password=hash_password(plain_password))
+    user = User(username=username, hashed_password=hash_password(plain_password), role=role)
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -111,6 +111,27 @@ def current_user_optional(
     if credentials is None:
         return None
     return decode_token(settings, credentials.credentials)
+
+
+async def require_admin(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db),
+) -> str:
+    """Requires a valid JWT *and* role='admin'."""
+    if not settings.auth_enabled:
+        return "anonymous"
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Authentication required",
+                            headers={"WWW-Authenticate": "Bearer"})
+    subject = decode_token(settings, credentials.credentials)
+    user = await get_user(db, subject)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User not found")
+    if user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return subject
 
 
 async def require_owner(

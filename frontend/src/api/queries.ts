@@ -16,6 +16,7 @@ import {
   generateImage,
   getImage,
   listImages,
+  listLibrary,
   listTags,
   setImageTags,
 } from './client';
@@ -37,6 +38,10 @@ export const queryKeys = {
     all: ['images'] as const,
     list: (params: ListImagesParams) => ['images', 'list', params] as const,
     detail: (id: number) => ['images', 'detail', id] as const,
+  },
+  library: {
+    all: ['library'] as const,
+    list: (params: ListImagesParams) => ['library', 'list', params] as const,
   },
   tags: {
     all: ['tags'] as const,
@@ -69,6 +74,16 @@ export function useImageQuery(id: number | null): UseQueryResult<ImageRecord, Er
     queryKey: queryKeys.images.detail(id ?? -1),
     queryFn: () => getImage(id as number),
     enabled: id != null,
+  });
+}
+
+export function useLibraryQuery(
+  params: ListImagesParams
+): UseQueryResult<ImageListResponse, Error> {
+  return useQuery({
+    queryKey: queryKeys.library.list(params),
+    queryFn: () => listLibrary(params),
+    placeholderData: keepPreviousData,
   });
 }
 

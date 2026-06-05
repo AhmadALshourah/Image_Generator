@@ -121,6 +121,14 @@ export const TR: Record<string, Record<Lang, string>> = {
   savedHint:       { en: 'saved',                             ar: 'مُوفّر' },
   approxSaved:     { en: '≈ ${amount} saved',                 ar: '≈ ${amount} مُوفّر' },
 
+  // ── library ───────────────────────────────────────────────────────────────
+  library:         { en: 'Library',                           ar: 'مكتبتي' },
+  librarySub:      { en: 'Your personal generated images',    ar: 'صورك الشخصية المولّدة' },
+  libraryEmpty:    { en: 'Your Library is empty',             ar: 'مكتبتك فارغة' },
+  libraryEmptySub: { en: 'Generate an image to add it here.', ar: 'ولّد صورة لإضافتها هنا.' },
+  libraryCount:    { en: '{n} image(s) in your library',      ar: '{n} صورة في مكتبتك' },
+  galleryReadOnly: { en: 'Gallery images are managed by the admin.', ar: 'صور المعرض يديرها الأدمن.' },
+
   // ── footer ────────────────────────────────────────────────────────────────
   footer:          { en: 'Built with React, TypeScript, Tailwind CSS, TanStack Query, and FastAPI.', ar: 'مبني بـ React وTypeScript وTailwind CSS وTanStack Query وFastAPI.' },
 

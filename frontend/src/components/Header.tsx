@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import LoginButton from './LoginButton';
 import { useLang } from '../context/LangContext';
+import { useAuth } from '../context/AuthContext';
 import type { Theme } from '../types/api';
 
 export interface HeaderProps {
@@ -88,14 +89,27 @@ function IconGlobe({ size = 17 }: { size?: number }) {
   );
 }
 
+function IconBook({ size = 17 }: { size?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ width: size, height: size }}>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  );
+}
+
 export default function Header({ theme, onToggleTheme }: HeaderProps) {
   const { t, lang, setLang } = useLang();
+  const { isAuthenticated, isAdmin } = useAuth();
 
   const navItems = [
-    { to: '/',        end: true,  labelKey: 'create',  Icon: IconSparkles },
-    { to: '/gallery', end: false, labelKey: 'gallery', Icon: IconGrid },
-    { to: '/stats',   end: false, labelKey: 'stats',   Icon: IconChart },
-  ];
+    { to: '/',        end: true,  labelKey: 'create',  Icon: IconSparkles, always: true  },
+    { to: '/gallery', end: false, labelKey: 'gallery', Icon: IconGrid,     always: true  },
+    { to: '/library', end: false, labelKey: 'library', Icon: IconBook,     always: false },
+    { to: '/stats',   end: false, labelKey: 'stats',   Icon: IconChart,    always: true  },
+  ].filter(item => item.always || (isAuthenticated && !isAdmin));
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 dark:border-slate-800/70 bg-white/70 dark:bg-slate-950/70 backdrop-blur-xl">

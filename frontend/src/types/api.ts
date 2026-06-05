@@ -77,6 +77,8 @@ export interface ImageRecord {
   image_url: string;
   thumbnail_url: string;
   cached: boolean;
+  is_gallery: boolean;
+  owner_id: number | null;
 }
 
 export interface ImageListResponse {
@@ -142,6 +144,7 @@ export interface AuthStatusResponse {
   is_authenticated: boolean;
   username: string | null;
   needs_setup: boolean;
+  role: 'admin' | 'user';
 }
 
 export interface DeleteResponse {
