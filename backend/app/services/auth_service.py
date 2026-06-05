@@ -9,13 +9,14 @@ for local dev/demos without any login prompt.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,23 +25,27 @@ from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # auto_error=False so an absent header doesn't 403 when auth is disabled.
 _bearer = HTTPBearer(auto_error=False)
 
 
 # ---- Password helpers -------------------------------------------------------
+# SHA-256 pre-hash before bcrypt: eliminates the 72-byte bcrypt limit so
+# passwords of any length are handled correctly.
+
+def _prepare(plain: str) -> bytes:
+    return hashlib.sha256(plain.encode()).digest()
+
 
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return bcrypt.hashpw(_prepare(plain), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     if not hashed:
         return False
     try:
-        return _pwd_context.verify(plain, hashed)
+        return bcrypt.checkpw(_prepare(plain), hashed.encode())
     except Exception:  # noqa: BLE001
         return False
 

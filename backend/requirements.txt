@@ -14,7 +14,7 @@ structlog>=24.4.0
 sse-starlette>=2.1.3
 # auth (#14)
 python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.0
 # embeddings vector packing (#17) — pure Python (struct + math), no numpy needed
 # observability (#27)
 sentry-sdk[fastapi]>=2.17.0
